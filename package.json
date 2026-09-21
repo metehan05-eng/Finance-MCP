@@ -1,0 +1,42 @@
+{
+  "name": "finans-mcp",
+  "version": "1.1.0",
+  "description": "Türkiye ve global finans verilerine erişim sağlayan açık kaynak MCP server (döviz kuru, kripto fiyatı, para birimi çevirici)",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "finans-mcp": "build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x build/index.js",
+    "start": "node build/index.js",
+    "dev": "tsc --watch",
+    "inspector": "npx @modelcontextprotocol/inspector node build/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "finance",
+    "currency",
+    "crypto",
+    "claude"
+  ],
+  "author": "metehan05-eng",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "fast-xml-parser": "^4.4.1",
+    "yahoo-finance2": "^4.0.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
