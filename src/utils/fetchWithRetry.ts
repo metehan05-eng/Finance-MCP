@@ -28,7 +28,8 @@ export async function fetchWithRetry(
       // 429 Rate limit → bekle ve tekrar dene
       if (response.status === 429 && attempt < maxRetries) {
         const retryAfter = response.headers.get("Retry-After");
-        const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : attempt * 1500;
+        const rawWaitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : attempt * 1500;
+        const waitMs = Number.isFinite(rawWaitMs) ? Math.min(rawWaitMs, 5000) : 5000;
         await sleep(waitMs);
         continue;
       }

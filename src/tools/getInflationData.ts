@@ -2,65 +2,67 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { fetchWithRetry, errorResponse } from "../utils/fetchWithRetry.js";
 
-// FRED (St. Louis Fed) — ücretsiz, anahtarsız, Türkiye makro verilerini içerir.
-// TURCP: Türkiye TÜFE yıllık % değişimi (Consumer Price Index, All Items for Türkiye)
-const FRED_BASE = "https://fred.stlouisfed.org/graph/fredgraph.csv";
-const SERIES_ID = "TURCP"; // Yıllık enflasyon %
+// Türkiye TÜFE enflasyonu — Dünya Bankası API (ücretsiz, anahtarsız).
+// FRED'in TURCP serisi (eski kaynak) artık yanıt vermediği için değiştirildi.
+const WB_BASE = "https://api.worldbank.org/v2/country/TUR/indicator";
+const SERIES_ID = "FP.CPI.TOTL.ZG"; // Yıllık TÜFE % değişimi (annual CPI growth %)
+
+interface WbDataPoint {
+  date: string;
+  value: number | null;
+}
+
+async function fetchWorldBankSeries(startYear: number, endYear: number): Promise<WbDataPoint[]> {
+  const url = `${WB_BASE}/${SERIES_ID}?format=json&per_page=1000&date=${startYear}:${endYear}`;
+  const resp = await fetchWithRetry(url);
+  if (!resp.ok) {
+    throw new Error(`Dünya Bankası yanıt vermedi (HTTP ${resp.status})`);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const json: any = await resp.json();
+  const rows = (Array.isArray(json) ? json[1] : null) ?? [];
+  return rows
+    .filter((r: any) => r?.date != null && r.value != null)
+    .map((r: any) => ({
+      date: String(r.date),
+      value: typeof r.value === "number" ? r.value : parseFloat(r.value) || null,
+    }));
+}
 
 export function registerGetInflationData(server: McpServer) {
   server.tool(
     "get_inflation_data",
-    "Türkiye TÜFE (Tüketici Fiyat Endeksi) enflasyon verisini döndürür. FRED (St. Louis Fed) üzerinden TÜİK kaynaklı yıllık % değişim verisi sağlanır.",
+    "Türkiye TÜFE (Tüketici Fiyat Endeksi) enflasyon verisini döndürür. Kaynak: Dünya Bankası (TÜİK kaynaklı yıllık TÜFE değişim %, FP.CPI.TOTL.ZG). Yıllık ortalama seridir.",
     {
       periods: z
         .number()
         .int()
         .min(1)
-        .max(120)
+        .max(40)
         .default(12)
-        .describe("Kaç aylık veri döndürülsün (1-120, default: 12)"),
+        .describe("Kaç yıllık veri döndürülsün (1-40, default: 12)"),
     },
     async ({ periods }) => {
-      // FRED CSV endpoint — API key gerektirmez
-      const url = `${FRED_BASE}?id=${SERIES_ID}`;
+      const endYear = new Date().getFullYear();
+      const startYear = endYear - (periods - 1);
 
       try {
-        const response = await fetchWithRetry(url);
+        let data = await fetchWorldBankSeries(startYear, endYear);
 
-        if (!response.ok) {
+        // Yıla göre artan (eski → yeni) sırala ve değerleri yuvarıla
+        data.sort((a, b) => Number(a.date) - Number(b.date));
+        const rounded = data.map((d) => ({ date: d.date, value: d.value != null ? Number(d.value.toFixed(2)) : d.value }));
+
+        if (rounded.length === 0) {
           return errorResponse(
-            `Enflasyon verisi alınamadı (HTTP ${response.status}).`
+            "Enflasyon verisi bulunamadı. Dünya Bankası serisi bu aralıkta veri döndürmedi."
           );
         }
 
-        const csvText = await response.text();
-        const lines = csvText.trim().split("\n");
-
-        // İlk satır başlık: DATE,TURCP
-        if (lines.length < 2) {
-          return errorResponse("Enflasyon verisi boş veya hatalı formatta.");
-        }
-
-        interface DataPoint {
-          date: string;
-          inflationRate: number | null;
-        }
-
-        const dataPoints: DataPoint[] = lines
-          .slice(1) // başlığı atla
-          .map((line) => {
-            const [date, value] = line.split(",");
-            const n = parseFloat(value ?? "");
-            return {
-              date: date?.trim() ?? "",
-              inflationRate: isNaN(n) ? null : n,
-            };
-          })
-          .filter((d) => d.date !== "");
-
-        // Son N periyot
-        const recent = dataPoints.slice(-periods);
-        const latest = recent[recent.length - 1];
+        const latest = rounded[rounded.length - 1];
+        const values = rounded.map((d) => d.value ?? 0);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
 
         return {
           content: [
@@ -70,15 +72,21 @@ export function registerGetInflationData(server: McpServer) {
                 {
                   seriesId: SERIES_ID,
                   description:
-                    "Türkiye TÜFE Yıllık % Değişim (TÜİK kaynaklı, FRED üzerinden)",
+                    "Türkiye TÜFE yıllık % değişim (Dünya Bankası / TÜİK kaynaklı)",
+                  frequency: "yıllık (ortalama)",
                   unit: "yıllık % değişim",
-                  latestDate: latest?.date ?? null,
-                  latestRate: latest?.inflationRate ?? null,
-                  periodCount: recent.length,
-                  data: recent,
-                  source: "FRED — St. Louis Fed (TÜİK verileri)",
+                  latestDate: latest.date,
+                  latestRate: latest.value,
+                  periodCount: rounded.length,
+                  minRate: min,
+                  maxRate: max,
+                  averageOverPeriod: Number(
+                    (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)
+                  ),
+                  data: rounded,
+                  source: "Dünya Bankası API (World Bank, TÜİK kaynaklı)",
                   dataNote:
-                    "Veriler aylık frekansta güncellenir; en güncel ay yayın takvimlerine göre 1-2 ay gecikmeli olabilir.",
+                    "Yıllık ortalama TÜFE değişimidir; aylık güncel TÜFE için TÜİK açıklamalarını takip edin. Yatırım tavsiyesi değildir.",
                 },
                 null,
                 2

@@ -12,10 +12,36 @@ import { registerGetHistoricalRate } from "./tools/getHistoricalRate.js";
 import { registerGetMultiCryptoPrice } from "./tools/getMultiCryptoPrice.js";
 import { registerGetGlobalStockPrice } from "./tools/getGlobalStockPrice.js";
 
+// Modül 1: Piyasa Verisi
+import { registerGetStockHistory } from "./tools/getStockHistory.js";
+import { registerGetCryptoHistory } from "./tools/getCryptoHistory.js";
+import { registerGetCommodityPrice } from "./tools/getCommodityPrice.js";
+import { registerSearchSymbol } from "./tools/searchSymbol.js";
+import { registerGetBistIndices } from "./tools/getBistIndices.js";
+
+// Modül 2: Makroekonomi
+import { registerGetMacroIndicators } from "./tools/getMacroIndicators.js";
+import { registerGetPolicyRate } from "./tools/getPolicyRate.js";
+import { registerGetGovBondYields } from "./tools/getGovBondYields.js";
+
+// Modül 3: Yatırım Analizi
+import { registerGetFundamentals } from "./tools/getFundamentals.js";
+import { registerGetCorrelation } from "./tools/getCorrelation.js";
+import { registerAnalyzePortfolio } from "./tools/analyzePortfolio.js";
+
+// Modül 4: BIST'e Özel
+import { registerGetFundPrice } from "./tools/getFundPrice.js";
+import { registerGetViopQuote } from "./tools/getViopQuote.js";
+import { registerGetMarketSummary } from "./tools/getMarketSummary.js";
+
+// Modül 5: Haber & Takvim
+import { registerGetEconomicCalendar } from "./tools/getEconomicCalendar.js";
+import { registerGetFinancialNews } from "./tools/getFinancialNews.js";
+
 async function main() {
   const server = new McpServer({
     name: "finans-mcp",
-    version: "1.1.0",
+    version: "1.2.0",
   });
 
   // Döviz & para birimi (Frankfurter / ECB)
@@ -34,13 +60,39 @@ async function main() {
   registerGetBistPrice(server);
   registerGetGlobalStockPrice(server); // Dünyadaki tüm hisseler (AAPL, NVDA, TSLA vb.)
 
-  // Makroekonomik veri (FRED / TÜİK)
+  // Makroekonomik veri (Dünya Bankası / TÜİK)
   registerGetInflationData(server);   // Türkiye TÜFE enflasyon verisi
+
+  // --- Modül 1: Piyasa Verisi ---
+  registerGetStockHistory(server);    // Geçmiş OHLC / grafik verisi
+  registerGetCryptoHistory(server);   // Kripto geçmiş (USD/TRY)
+  registerGetCommodityPrice(server);  // Altın, petrol, gümüş vb.
+  registerSearchSymbol(server);       // Sembol arama (Yahoo)
+  registerGetBistIndices(server);     // BIST endeksleri
+
+  // --- Modül 2: Makroekonomi ---
+  registerGetMacroIndicators(server); // GSYİH, enflasyon, istihdam vb.
+  registerGetPolicyRate(server);      // TCMB politika faizi
+  registerGetGovBondYields(server);   // 10 yıllık / gösterge tahvil
+
+  // --- Modül 3: Yatırım Analizi ---
+  registerGetFundamentals(server);    // F/K, EPS, temettü vb.
+  registerGetCorrelation(server);     // Varlık korelasyonu
+  registerAnalyzePortfolio(server);   // Portföy analizi
+
+  // --- Modül 4: BIST'e Özel ---
+  registerGetFundPrice(server);       // TEFAS fon fiyatları
+  registerGetViopQuote(server);       // VİOP kontratları
+  registerGetMarketSummary(server);   // Piyasa özeti
+
+  // --- Modül 5: Haber & Takvim ---
+  registerGetEconomicCalendar(server);// Ekonomik takvim
+  registerGetFinancialNews(server);   // Finans haberleri (RSS)
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error("finans-mcp v1.2.0 — stdio üzerinde çalışıyor. (9 tool aktif)");
+  console.error("finans-mcp v1.2.0 — stdio üzerinde çalışıyor. (25 tool aktif)");
 }
 
 main().catch((error) => {

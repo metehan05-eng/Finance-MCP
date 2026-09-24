@@ -1,7 +1,7 @@
 {
   "name": "finans-mcp",
-  "version": "1.1.0",
-  "description": "Türkiye ve global finans verilerine erişim sağlayan açık kaynak MCP server (döviz kuru, kripto fiyatı, para birimi çevirici)",
+  "version": "1.2.0",
+  "description": "Türkiye ve global finans verilerine erişim sağlayan açık kaynak MCP server (döviz, kripto, hisse geçmişi, makroekonomi, BIST, haber)",
   "type": "module",
   "main": "build/index.js",
   "bin": {
