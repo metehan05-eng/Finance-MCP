@@ -10,9 +10,7 @@ export function registerGetBistPrice(server: McpServer) {
       symbol: z
         .string()
         .min(1)
-        .describe(
-          "BIST hisse kodu, ör. THYAO, GARAN, ASELS, SASA, BIMAS (sonuna .IS eklemeyin)"
-        ),
+        .describe("BIST hisse kodu, ör. THYAO, GARAN, ASELS, SASA, BIMAS (sonuna .IS eklemeyin)"),
     },
     async ({ symbol }) => {
       const ticker = symbol.toUpperCase().replace(/\.IS$/i, "");
@@ -23,7 +21,6 @@ export function registerGetBistPrice(server: McpServer) {
         const { default: YahooFinance } = await import("yahoo-finance2");
         const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const quote: any = await yf.quote(query);
 
         if (!quote || quote.regularMarketPrice === undefined || quote.regularMarketPrice === null) {

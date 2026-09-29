@@ -13,7 +13,11 @@ const WB_BASE = "https://api.worldbank.org/v2/country";
  * FRED tamamlayıcı seriler (çeyreklik/aylık ek bağlam için).
  */
 const FRED_SUPPLEMENTARY: Record<string, { id: string; name: string; freq: string }> = {
-  quarterlyGdp: { id: "NGDPRSAXDCTRQ", name: "Reel GSYİH (milyon TL, mevsimsel)", freq: "çeyreklik" },
+  quarterlyGdp: {
+    id: "NGDPRSAXDCTRQ",
+    name: "Reel GSYİH (milyon TL, mevsimsel)",
+    freq: "çeyreklik",
+  },
   discountRate: { id: "INTDSRTRM193N", name: "TCMB İskonto / politika faizi (IMF)", freq: "aylık" },
 };
 
@@ -23,14 +27,49 @@ const WB_INDICATORS: Array<{
   unit: string;
   format: (v: number | null) => number | null;
 }> = [
-  { code: "NY.GDP.MKTP.KD.ZG", name: "GSYİH büyümesi", unit: "% (yıllık)", format: (v) => round(v, 2) },
-  { code: "NY.GDP.PCAP.CD", name: "Kişi başına GSYİH", unit: "ABD doları", format: (v) => v ? Math.round(v) : null },
-  { code: "FP.CPI.TOTL.ZG", name: "Enflasyon (TÜFE)", unit: "% (yıllık ort.)", format: (v) => round(v, 2) },
+  {
+    code: "NY.GDP.MKTP.KD.ZG",
+    name: "GSYİH büyümesi",
+    unit: "% (yıllık)",
+    format: (v) => round(v, 2),
+  },
+  {
+    code: "NY.GDP.PCAP.CD",
+    name: "Kişi başına GSYİH",
+    unit: "ABD doları",
+    format: (v) => (v ? Math.round(v) : null),
+  },
+  {
+    code: "FP.CPI.TOTL.ZG",
+    name: "Enflasyon (TÜFE)",
+    unit: "% (yıllık ort.)",
+    format: (v) => round(v, 2),
+  },
   { code: "SL.UEM.TOTL.ZS", name: "İşsizlik oranı", unit: "%", format: (v) => round(v, 2) },
-  { code: "BN.CAB.XOKA.GD.ZS", name: "Cari işlemler dengesi", unit: "% GSYİH", format: (v) => round(v, 2) },
-  { code: "FI.RES.TOTL.CD", name: "Toplam rezervler", unit: "ABD doları", format: (v) => v ? Math.round(v) : null },
-  { code: "NE.EXP.GNFS.CD", name: "İhracat", unit: "ABD doları", format: (v) => v ? Math.round(v) : null },
-  { code: "NE.IMP.GNFS.CD", name: "İthalat", unit: "ABD doları", format: (v) => v ? Math.round(v) : null },
+  {
+    code: "BN.CAB.XOKA.GD.ZS",
+    name: "Cari işlemler dengesi",
+    unit: "% GSYİH",
+    format: (v) => round(v, 2),
+  },
+  {
+    code: "FI.RES.TOTL.CD",
+    name: "Toplam rezervler",
+    unit: "ABD doları",
+    format: (v) => (v ? Math.round(v) : null),
+  },
+  {
+    code: "NE.EXP.GNFS.CD",
+    name: "İhracat",
+    unit: "ABD doları",
+    format: (v) => (v ? Math.round(v) : null),
+  },
+  {
+    code: "NE.IMP.GNFS.CD",
+    name: "İthalat",
+    unit: "ABD doları",
+    format: (v) => (v ? Math.round(v) : null),
+  },
 ];
 
 /**
@@ -67,13 +106,15 @@ export function registerGetMacroIndicators(server: McpServer) {
             try {
               const resp = await fetchWithRetry(url);
               if (!resp.ok) return { ...ind, error: `HTTP ${resp.status}` };
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
               const json: any[] = await resp.json();
               const rows = (Array.isArray(json) ? json[1] : null) ?? [];
               const series: Record<string, number | null> = {};
               for (const r of rows) {
                 if (r?.date && r.value != null) {
-                  series[String(r.date)] = ind.format(typeof r.value === "number" ? r.value : parseFloat(r.value) || null);
+                  series[String(r.date)] = ind.format(
+                    typeof r.value === "number" ? r.value : parseFloat(r.value) || null
+                  );
                 }
               }
               return { ...ind, series };
@@ -84,7 +125,10 @@ export function registerGetMacroIndicators(server: McpServer) {
         );
 
         // FRED tamamlayıcılar
-        const fred: Record<string, { name: string; freq: string; latestDate: string | null; latestValue: number | null }> = {};
+        const fred: Record<
+          string,
+          { name: string; freq: string; latestDate: string | null; latestValue: number | null }
+        > = {};
         for (const [key, meta] of Object.entries(FRED_SUPPLEMENTARY)) {
           try {
             const resp = await fetchWithRetry(
@@ -93,7 +137,11 @@ export function registerGetMacroIndicators(server: McpServer) {
             );
             if (resp.ok) {
               const csv = await resp.text();
-              const lines = csv.trim().split("\n").slice(1).filter((l) => l.trim() && !l.startsWith("observation_date"));
+              const lines = csv
+                .trim()
+                .split("\n")
+                .slice(1)
+                .filter((l) => l.trim() && !l.startsWith("observation_date"));
               const last = (lines[lines.length - 1] ?? "").split(",");
               if (last[0]) {
                 fred[key] = {

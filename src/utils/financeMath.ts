@@ -73,7 +73,7 @@ export function annualizedVolatility(dailyReturns: number[]): number {
  */
 export function parseTrNumber(s: string | null | undefined): number | null {
   if (s === null || s === undefined || s.trim() === "" || s.trim() === "-") return null;
-  const cleaned = s.replace(/[^\d,.\-]/g, "").trim();
+  const cleaned = s.replace(/[^\d,.-]/g, "").trim();
   if (!cleaned) return null;
   let normalized = cleaned;
   if (normalized.includes(",") && normalized.includes(".")) {

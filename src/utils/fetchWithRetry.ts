@@ -1,5 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
 /**
  * Exponential backoff ile HTTP isteği atar.
  * - 3 deneme hakkı

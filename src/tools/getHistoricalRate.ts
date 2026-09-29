@@ -9,20 +9,12 @@ export function registerGetHistoricalRate(server: McpServer) {
     "get_historical_rate",
     "Belirtilen bir tarihteki döviz kurunu döndürür. Geçmiş ECB/Frankfurter verilerine (1999'dan itibaren) erişim sağlar.",
     {
-      from: z
-        .string()
-        .length(3)
-        .describe("Kaynak para birimi kodu, ör. USD, EUR, GBP"),
-      to: z
-        .string()
-        .length(3)
-        .describe("Hedef para birimi kodu, ör. TRY, USD, EUR"),
+      from: z.string().length(3).describe("Kaynak para birimi kodu, ör. USD, EUR, GBP"),
+      to: z.string().length(3).describe("Hedef para birimi kodu, ör. TRY, USD, EUR"),
       date: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalı")
-        .describe(
-          "Kur bilgisi istenilen tarih (YYYY-MM-DD). 1999-01-04'ten itibaren desteklenir."
-        ),
+        .describe("Kur bilgisi istenilen tarih (YYYY-MM-DD). 1999-01-04'ten itibaren desteklenir."),
     },
     async ({ from, to, date }) => {
       const fromCode = from.toUpperCase();
@@ -55,9 +47,7 @@ export function registerGetHistoricalRate(server: McpServer) {
         const rate = data.rates[toCode];
 
         if (rate === undefined) {
-          return errorResponse(
-            `${toCode} için ${date} tarihli kur bulunamadı.`
-          );
+          return errorResponse(`${toCode} için ${date} tarihli kur bulunamadı.`);
         }
 
         return {
@@ -84,9 +74,7 @@ export function registerGetHistoricalRate(server: McpServer) {
           ],
         };
       } catch (err) {
-        return errorResponse(
-          `Ağ hatası: ${err instanceof Error ? err.message : String(err)}`
-        );
+        return errorResponse(`Ağ hatası: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   );

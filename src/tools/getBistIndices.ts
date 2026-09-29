@@ -4,8 +4,6 @@ import { errorResponse } from "../utils/fetchWithRetry.js";
 import { fetchQuotes } from "../utils/yahoo.js";
 import { round } from "../utils/financeMath.js";
 
-const DEFAULT_INDICES = ["XU100", "XU030", "XU050", "XU015", "XBANK", "XUSIN"];
-
 const INDEX_NAMES: Record<string, string> = {
   XU100: "BIST 100",
   XU030: "BIST 30",

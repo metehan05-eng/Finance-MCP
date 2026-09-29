@@ -2,10 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
 import { fetchQuotes, fetchQuote } from "../utils/yahoo.js";
-import {
-  round,
-  priceToReturns,
-} from "../utils/financeMath.js";
+import { round } from "../utils/financeMath.js";
 
 /** TRY → USD dönüşümünde kullanılan anlık kur (isteğin başında doldurulur). */
 let usdTryRate = 1;
@@ -26,11 +23,10 @@ export function registerAnalyzePortfolio(server: McpServer) {
             symbol: z
               .string()
               .min(1)
-              .describe("Sembol. BIST için '.IS' eklenir: THYAO.IS, ASELS.IS; küresel: AAPL; kripto: BTC-USD."),
-            quantity: z
-              .number()
-              .positive()
-              .describe("Elindeki adet/miktar"),
+              .describe(
+                "Sembol. BIST için '.IS' eklenir: THYAO.IS, ASELS.IS; küresel: AAPL; kripto: BTC-USD."
+              ),
+            quantity: z.number().positive().describe("Elindeki adet/miktar"),
             cost: z
               .number()
               .nonnegative()
@@ -45,7 +41,9 @@ export function registerAnalyzePortfolio(server: McpServer) {
         .number()
         .nonnegative()
         .default(30)
-        .describe("Risksiz oran (% yıllık). Varsayılan %30 (Türkiye mevduat/politika faizi yaklaşımı)"),
+        .describe(
+          "Risksiz oran (% yıllık). Varsayılan %30 (Türkiye mevduat/politika faizi yaklaşımı)"
+        ),
     },
     async ({ positions, riskFreeRatePct }) => {
       try {
@@ -90,21 +88,16 @@ export function registerAnalyzePortfolio(server: McpServer) {
           };
         });
 
-        const totalUsd = rich.reduce(
-          (s, p) => s + toUsd(p) * p.quantity,
-          0
-        );
-        const lastUsd = rich.reduce(
-          (s, p) => s + toUsd(p, p.previousClose) * p.quantity,
-          0
-        );
+        const totalUsd = rich.reduce((s, p) => s + toUsd(p) * p.quantity, 0);
+        const lastUsd = rich.reduce((s, p) => s + toUsd(p, p.previousClose) * p.quantity, 0);
         const dailyChange = totalUsd - lastUsd;
         const dailyChangePct = lastUsd > 0 ? (dailyChange / lastUsd) * 100 : 0;
 
         const withCost = rich.filter((p) => p.cost != null);
         const costUsd = withCost.reduce((s, p) => s + toUsd(p, p.cost) * p.quantity, 0);
         const gainUsd = withCost.length > 0 ? totalUsd - costUsd : null;
-        const gainPct = withCost.length > 0 && costUsd > 0 ? (gainUsd as number) / costUsd * 100 : null;
+        const gainPct =
+          withCost.length > 0 && costUsd > 0 ? ((gainUsd as number) / costUsd) * 100 : null;
 
         // Konum bazlı detay
         const positionsDetail = rich.map((p) => ({
@@ -119,9 +112,10 @@ export function registerAnalyzePortfolio(server: McpServer) {
           previousClose: p.previousClose,
           marketChange: p.marketChange != null ? round(p.marketChange * p.quantity, 2) : null,
           marketChangePct: round(p.marketChangePercent),
-          weightPct: totalUsd > 0 ? round((toUsd(p) * p.quantity) / totalUsd * 100) : null,
+          weightPct: totalUsd > 0 ? round(((toUsd(p) * p.quantity) / totalUsd) * 100) : null,
           cost: p.cost ?? null,
-          unrealizedGainPct: p.cost != null && p.cost > 0 ? round((p.price - p.cost) / p.cost * 100) : null,
+          unrealizedGainPct:
+            p.cost != null && p.cost > 0 ? round(((p.price - p.cost) / p.cost) * 100) : null,
         }));
 
         // Risk / getiri tahmini: ağırlıklı ortalama + Sharp
@@ -202,11 +196,11 @@ function toUsd(p: { currency?: string; price: number }, overridePrice?: number):
 function weightedRisk(weights: number[]): number {
   // Tek başına doğrusal ağırlıklı ters volatilite; düşerken çeşitlendirme
   const avgFactor = 0.32; // gelişen piyasa hisse sepeti için makul uzun vadeli tahmini volatilite
-  const diversity = 1 - (coreDiversity(weights) * 0.25);
+  const diversity = 1 - coreDiversity(weights) * 0.25;
   return avgFactor * diversity;
 }
 
-function weightedReturnEstimate(weights: number[]): number {
+function weightedReturnEstimate(_weights: number[]): number {
   const equityPremiumBase = 0.12; // gelişen piyasa uzun vadeli beklenen reel+enflasyon getirisi
   return equityPremiumBase;
 }

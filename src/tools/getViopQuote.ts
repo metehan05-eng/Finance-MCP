@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { fetchWithRetry, errorResponse } from "../utils/fetchWithRetry.js";
-import { parseTrNumber, round } from "../utils/financeMath.js";
+import { parseTrNumber } from "../utils/financeMath.js";
 
 const VIOP_URL = "https://www.oyakyatirim.com.tr/viop";
 
@@ -96,8 +96,7 @@ export function registerGetViopQuote(server: McpServer) {
           const q = search.trim().toUpperCase();
           contracts = contracts.filter(
             (c) =>
-              c.code.toUpperCase().includes(q) ||
-              (c.description ?? "").toUpperCase().includes(q)
+              c.code.toUpperCase().includes(q) || (c.description ?? "").toUpperCase().includes(q)
           );
         }
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
-import { fetchOhlc, PERIOD_DAYS } from "../utils/yahoo.js";
+import { fetchOhlc, tryBoth } from "../utils/yahoo.js";
 import { round } from "../utils/financeMath.js";
 
 /**
@@ -54,7 +54,7 @@ export function registerGetStockHistory(server: McpServer) {
         const onlyBist = input.endsWith(".IS");
         const directSymbol = onlyBist ? input : input;
 
-        let chart = onlyBist
+        const chart = onlyBist
           ? await fetchOhlc(directSymbol, { period, interval, startDate, endDate })
           : await tryBoth(input, period, interval, startDate, endDate);
 
@@ -131,38 +131,4 @@ export function registerGetStockHistory(server: McpServer) {
       }
     }
   );
-}
-
-/**
- * Önce doğrudan, sonuç yoksa BIST (`.IS`) uzantısıyla dener.
- * Tek denemenin başarısızlığı diğer denemeyi engellemez.
- */
-async function tryBoth(
-  input: string,
-  period: string,
-  interval: string,
-  startDate?: string,
-  endDate?: string
-): Promise<import("../utils/yahoo.js").ChartResult> {
-  let direct: import("../utils/yahoo.js").ChartResult | null = null;
-  try {
-    direct = await fetchOhlc(input, { period, interval, startDate, endDate });
-  } catch {
-    /* doğrudan sembol geçersiz olabilir */
-  }
-
-  if (direct && direct.rows.length > 0 && !input.toUpperCase().endsWith(".IS")) {
-    return direct;
-  }
-
-  try {
-    const breve = input.toUpperCase().endsWith(".IS") ? input : `${input}.IS`;
-    const bist = await fetchOhlc(breve, { period, interval, startDate, endDate });
-    if (bist.rows.length > 0) return bist;
-  } catch {
-    /* BIST denemesi de başarısız olabilir */
-  }
-
-  if (direct) return direct;
-  throw new Error("Sembol bulunamadı");
 }

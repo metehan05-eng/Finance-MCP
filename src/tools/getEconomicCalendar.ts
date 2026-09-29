@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { fetchWithRetry, errorResponse } from "../utils/fetchWithRetry.js";
-import { parseTrNumber, round } from "../utils/financeMath.js";
 
 const FF_URLS = {
   thisweek: "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
@@ -24,7 +23,9 @@ export function registerGetEconomicCalendar(server: McpServer) {
       range: z
         .enum(["today", "tomorrow", "thisweek", "nextweek"])
         .default("thisweek")
-        .describe("Zaman aralığı: today (bugün), tomorrow (yarın), thisweek (bu hafta), nextweek (gelecek hafta)"),
+        .describe(
+          "Zaman aralığı: today (bugün), tomorrow (yarın), thisweek (bu hafta), nextweek (gelecek hafta)"
+        ),
       country: z
         .string()
         .optional()
@@ -73,74 +74,78 @@ export function registerGetEconomicCalendar(server: McpServer) {
             );
           }
 
-        const countryFilter = country == null ? null : country.trim().toUpperCase();
-        const looksTurkish =
-          countryFilter == null ||
-          countryFilter === "ALL" ||
-          ["TR", "TUR", "TURKEY", "TÜRK", "TÜRKIYE", "TURKIYE"].includes(countryFilter);
+          const countryFilter = country == null ? null : country.trim().toUpperCase();
+          const looksTurkish =
+            countryFilter == null ||
+            countryFilter === "ALL" ||
+            ["TR", "TUR", "TURKEY", "TÜRK", "TÜRKIYE", "TURKIYE"].includes(countryFilter);
 
-        let events = items.filter(
-          (e: any) =>
-            (countryFilter == null ||
-              countryFilter === "ALL" ||
-              (e.country ?? "").toUpperCase() === countryFilter ||
-              (looksTurkish &&
-                ((e.country ?? "").toUpperCase() === "TRY" ||
-                  (e.title ?? "").toLowerCase().includes("turk") ||
-                  (e.title ?? "").toLowerCase().includes("türk")))) &&
-            (impact === "all" || (e.impact ?? "").toLowerCase() === impact.toLowerCase())
-        );
-
-        const availableCountries = [...new Set(items.map((e: any) => e.country).filter(Boolean))];
-        const countryMeta = countryFilter === "ALL" ? "all" : countryFilter ?? country?.trim().toUpperCase() ?? "hepsi";
-
-        events = events
-          .map((e) => {
-            const m = FF_DATE_RE.exec(e.date ?? "");
-            return {
-              date: m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}` : e.date,
-              country: e.country,
-              title: e.title,
-              impact: e.impact,
-              actual: e.actual ?? null,
-              forecast: e.forecast ?? null,
-              previous: e.previous ?? null,
-            };
-          })
-          .slice(0, limit);
-
-        if (events.length === 0) {
-          const countryLabel = country ?? "hepsi";
-          const hint = countryLabel.toUpperCase() === "TR"
-            ? `Bu hafta Türkiye için kayıtlı etkinlik yok. Verideki ülke kodları para birimi bazlıdır: ${availableCountries.join(", ")}.`
-            : `Filtreye uyan etkinlik bulunamadı. Verideki ülke kodları: ${availableCountries.join(", ")}.`;
-          return errorResponse(
-            `range=${range}, country=${countryLabel}, impact=${impact} — ${hint}`
+          let events = items.filter(
+            (e: any) =>
+              (countryFilter == null ||
+                countryFilter === "ALL" ||
+                (e.country ?? "").toUpperCase() === countryFilter ||
+                (looksTurkish &&
+                  ((e.country ?? "").toUpperCase() === "TRY" ||
+                    (e.title ?? "").toLowerCase().includes("turk") ||
+                    (e.title ?? "").toLowerCase().includes("türk")))) &&
+              (impact === "all" || (e.impact ?? "").toLowerCase() === impact.toLowerCase())
           );
-        }
 
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  range,
-                  filter: { country: countryMeta, impact },
-                  eventCount: events.length,
-                  availableCountries,
-                  events,
-                  source: "ForexFactory Ekonomik Takvim",
-                  dataNote:
-                    "Açıklanma saatleri Tahahhüt (TSİ'ye çevrilmemiş, UTC bazlı). Yatırım tavsiyesi değildir.",
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } catch (err) {
+          const availableCountries = [...new Set(items.map((e: any) => e.country).filter(Boolean))];
+          const countryMeta =
+            countryFilter === "ALL"
+              ? "all"
+              : (countryFilter ?? country?.trim().toUpperCase() ?? "hepsi");
+
+          events = events
+            .map((e) => {
+              const m = FF_DATE_RE.exec(e.date ?? "");
+              return {
+                date: m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}` : e.date,
+                country: e.country,
+                title: e.title,
+                impact: e.impact,
+                actual: e.actual ?? null,
+                forecast: e.forecast ?? null,
+                previous: e.previous ?? null,
+              };
+            })
+            .slice(0, limit);
+
+          if (events.length === 0) {
+            const countryLabel = country ?? "hepsi";
+            const hint =
+              countryLabel.toUpperCase() === "TR"
+                ? `Bu hafta Türkiye için kayıtlı etkinlik yok. Verideki ülke kodları para birimi bazlıdır: ${availableCountries.join(", ")}.`
+                : `Filtreye uyan etkinlik bulunamadı. Verideki ülke kodları: ${availableCountries.join(", ")}.`;
+            return errorResponse(
+              `range=${range}, country=${countryLabel}, impact=${impact} — ${hint}`
+            );
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    range,
+                    filter: { country: countryMeta, impact },
+                    eventCount: events.length,
+                    availableCountries,
+                    events,
+                    source: "ForexFactory Ekonomik Takvim",
+                    dataNote:
+                      "Açıklanma saatleri Tahahhüt (TSİ'ye çevrilmemiş, UTC bazlı). Yatırım tavsiyesi değildir.",
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           return errorResponse(`Ekonomik takvim alınamadı: ${msg}`);
         }

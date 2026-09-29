@@ -21,7 +21,6 @@ export function registerGetGlobalStockPrice(server: McpServer) {
         const { default: YahooFinance } = await import("yahoo-finance2");
         const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const quote: any = await yf.quote(ticker);
 
         if (!quote || quote.regularMarketPrice === undefined || quote.regularMarketPrice === null) {

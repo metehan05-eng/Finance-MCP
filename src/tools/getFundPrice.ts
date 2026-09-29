@@ -18,9 +18,7 @@ interface TeFake {
 function tefasDataToFund(r: any): TeFake {
   const rawPrice = r.fiyat ?? r.nav;
   const price =
-    typeof rawPrice === "number" && !isNaN(rawPrice)
-      ? rawPrice
-      : parseTrNumber(rawPrice);
+    typeof rawPrice === "number" && !isNaN(rawPrice) ? rawPrice : parseTrNumber(rawPrice);
   return {
     fonKodu: r.fonKodu ?? "",
     fonAd: r.fonUnvan ?? "",
@@ -51,7 +49,9 @@ export function registerGetFundPrice(server: McpServer) {
         .min(7)
         .max(28)
         .default(28)
-        .describe("Geriye dönük kaç gün gösterilsin (TEFAS istek başına en fazla 28 gün). Varsayılan 28."),
+        .describe(
+          "Geriye dönük kaç gün gösterilsin (TEFAS istek başına en fazla 28 gün). Varsayılan 28."
+        ),
     },
     async ({ fundCode, days }) => {
       const code = fundCode.trim().toUpperCase();
@@ -62,8 +62,7 @@ export function registerGetFundPrice(server: McpServer) {
       const fmt = (d: Date) =>
         `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let body: any = {
+      const body: any = {
         fonTipi: "YAT",
         fonKodu: code,
         aramaMetni: null,
@@ -152,8 +151,7 @@ export function registerGetFundPrice(server: McpServer) {
                 periodDays: days,
                 results: funds,
                 source: "TEFAS (Türkiye Elektronik Fon Alım Satım Platformu)",
-                dataNote:
-                  "Fiyatlar NAV (birim pay değeri) bazlıdır. Yatırım tavsiyesi değildir.",
+                dataNote: "Fiyatlar NAV (birim pay değeri) bazlıdır. Yatırım tavsiyesi değildir.",
               },
               null,
               2

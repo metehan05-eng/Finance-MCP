@@ -66,9 +66,7 @@ export function registerConvertCurrency(server: McpServer) {
           ],
         };
       } catch (err) {
-        return errorResponse(
-          `Ağ hatası: ${err instanceof Error ? err.message : String(err)}`
-        );
+        return errorResponse(`Ağ hatası: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   );

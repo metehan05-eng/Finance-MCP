@@ -37,10 +37,7 @@ export function registerGetMultiCryptoPrice(server: McpServer) {
           );
         }
 
-        const data = (await response.json()) as Record<
-          string,
-          Record<string, number>
-        >;
+        const data = (await response.json()) as Record<string, Record<string, number>>;
 
         const results: Record<
           string,
@@ -95,9 +92,7 @@ export function registerGetMultiCryptoPrice(server: McpServer) {
           ],
         };
       } catch (err) {
-        return errorResponse(
-          `Ağ hatası: ${err instanceof Error ? err.message : String(err)}`
-        );
+        return errorResponse(`Ağ hatası: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   );

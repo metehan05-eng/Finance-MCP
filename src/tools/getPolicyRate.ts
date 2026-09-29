@@ -10,6 +10,24 @@ interface RateChange {
   rate: number;
 }
 
+/**
+ * TCMB 1 hafta repo sayfasından tüm faiz değişikliklerini çeker.
+ * Ortak kullanım için dışa açıktır (örn. get_tcmb_snapshot).
+ */
+export async function fetchPolicyRateHistory(): Promise<RateChange[]> {
+  const response = await fetchWithRetry(TCMB_REPO_URL, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      Accept: "text/html,application/xhtml+xml",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`TCMB sayfasına erişilemedi (HTTP ${response.status})`);
+  }
+  const html = await response.text();
+  return parseRateTable(html);
+}
+
 function parseRateTable(html: string): RateChange[] {
   const rows: RateChange[] = [];
   const tdPattern = /<td[^>]*>(.*?)<\/td>/g;
@@ -59,19 +77,7 @@ export function registerGetPolicyRate(server: McpServer) {
     },
     async ({ history }) => {
       try {
-        const response = await fetchWithRetry(TCMB_REPO_URL, {
-          headers: {
-            "User-Agent": "Mozilla/5.0",
-            Accept: "text/html,application/xhtml+xml",
-          },
-        });
-
-        if (!response.ok) {
-          return errorResponse(`TCMB sayfasına erişilemedi (HTTP ${response.status}).`);
-        }
-
-        const html = await response.text();
-        const changes = parseRateTable(html);
+        const changes = await fetchPolicyRateHistory();
 
         if (changes.length === 0) {
           return errorResponse("TCMB faiz tablosu ayrıştırılamadı veya boş.");

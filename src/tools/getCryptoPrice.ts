@@ -34,10 +34,7 @@ export function registerGetCryptoPrice(server: McpServer) {
           );
         }
 
-        const data = (await response.json()) as Record<
-          string,
-          Record<string, number>
-        >;
+        const data = (await response.json()) as Record<string, Record<string, number>>;
 
         const coinData = data[id];
 
@@ -68,9 +65,7 @@ export function registerGetCryptoPrice(server: McpServer) {
           ],
         };
       } catch (err) {
-        return errorResponse(
-          `Ağ hatası: ${err instanceof Error ? err.message : String(err)}`
-        );
+        return errorResponse(`Ağ hatası: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   );

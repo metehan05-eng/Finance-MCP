@@ -10,21 +10,13 @@ export function registerGetExchangeRate(server: McpServer) {
     "get_exchange_rate",
     "İki para birimi arasındaki güncel (veya belirli bir tarihteki) döviz kurunu döndürür (örn. USD → TRY).",
     {
-      from: z
-        .string()
-        .length(3)
-        .describe("Kaynak para birimi kodu, ör. USD, EUR, TRY"),
-      to: z
-        .string()
-        .length(3)
-        .describe("Hedef para birimi kodu, ör. TRY, USD, EUR"),
+      from: z.string().length(3).describe("Kaynak para birimi kodu, ör. USD, EUR, TRY"),
+      to: z.string().length(3).describe("Hedef para birimi kodu, ör. TRY, USD, EUR"),
       date: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
         .optional()
-        .describe(
-          "Opsiyonel tarih (YYYY-MM-DD). Belirtilmezse en güncel kur döndürülür."
-        ),
+        .describe("Opsiyonel tarih (YYYY-MM-DD). Belirtilmezse en güncel kur döndürülür."),
     },
     async ({ from, to, date }) => {
       const fromCode = from.toUpperCase();
@@ -75,9 +67,7 @@ export function registerGetExchangeRate(server: McpServer) {
           ],
         };
       } catch (err) {
-        return errorResponse(
-          `Ağ hatası: ${err instanceof Error ? err.message : String(err)}`
-        );
+        return errorResponse(`Ağ hatası: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   );

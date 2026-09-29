@@ -26,14 +26,12 @@ export interface TcmbData {
  * TCMB XML verisini (today.xml veya arşiv) parse eder.
  */
 export function parseTcmbXml(xmlText: string): TcmbData {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed: any = parser.parse(xmlText);
   const root = parsed["Tarih_Date"];
 
   const date: string = root["@_Date"] ?? root["@_Tarih"] ?? "";
   const bulletinNo: string = root["@_Bulten_No"] ?? "";
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawCurrencies: any[] = Array.isArray(root["Currency"])
     ? root["Currency"]
     : [root["Currency"]];

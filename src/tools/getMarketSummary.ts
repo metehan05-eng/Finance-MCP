@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
 import { fetchQuotes } from "../utils/yahoo.js";
@@ -29,7 +28,12 @@ export function registerGetMarketSummary(server: McpServer) {
     {},
     async () => {
       try {
-        const all = [...WATCHLIST.indices, ...WATCHLIST.banks, ...WATCHLIST.industrials, ...WATCHLIST.other];
+        const all = [
+          ...WATCHLIST.indices,
+          ...WATCHLIST.banks,
+          ...WATCHLIST.industrials,
+          ...WATCHLIST.other,
+        ];
 
         // Parçalı çek — Yahoo tek çağrıda sınırlı sayıda sembol kabul eder
         const chunks: string[][] = [];

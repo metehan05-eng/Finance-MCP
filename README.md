@@ -2,13 +2,13 @@
 
 Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açık kaynaklı bir **Model Context Protocol (MCP)** sunucusu. 
 
-**Cursor, Claude Desktop ve Claude Code** gibi yapay zeka araçlarının; BIST hisselerine, küresel hisse senetlerine (NVIDIA, Apple, Tesla vb.), kripto para fiyatlarına, döviz kurlarına, enflasyon verilerine, makroekonomik göstergelere, hisse geçmişine (grafik), VİOP/TEFAS verilerine ve finans haberlerine canlı erişmesini sağlar.
+**Cursor, Claude Desktop ve Claude Code** gibi yapay zeka araçlarının; BIST hisselerine, küresel hisse senetlerine (NVIDIA, Apple, Tesla vb.), kripto para fiyatlarına, döviz kurlarına, enflasyon verilerine, makroekonomik göstergelere, **teknik analiz indikatörlerine**, portföy backtest'ine, VİOP/TEFAS verilerine ve finans haberlerine canlı erişmesini sağlar.
 
 > 💡 **Tüm veri kaynakları tamamen ücretsizdir ve herhangi bir API Key gerektirmez!**
 
 ---
 
-## 🚀 Sunulan Araçlar (25 Araç)
+## 🚀 Sunulan Araçlar (33 Araç)
 
 ### Döviz & Para Birimi
 | Araç | Açıklama | Kaynak |
@@ -66,6 +66,26 @@ Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açı
 | :--- | :--- | :--- |
 | `get_economic_calendar` | Küresel ekonomik takvim (faiz kararları, enflasyon, istihdam...) — ülke/etki filtresi | ForexFactory |
 | `get_financial_news` | Hisse/endeks/kripto/döviz hakkında güncel haber başlıkları | Yahoo Finance RSS |
+
+### Teknik Analiz
+| Araç | Açıklama | Kaynak |
+| :--- | :--- | :--- |
+| `get_technical_indicators` | RSI(14), SMA(20/50/200), EMA(12/26), MACD(12/26/9), Bollinger bantları, ATR(14) + sinyal yorumu | Yahoo Finance + yerel hesaplama |
+| `get_market_movers` | Günün en çok yükselenleri/düşenleri, en aktifler, büyüme teknoloji hisseleri vb. hazır listeler | Yahoo Finance Screener |
+| `get_trending_stocks` | Bölgeye göre en çok trend/ilgi gören hisseler (fiyat ve değişimle) | Yahoo Finance Trending |
+
+### Piyasa Göstergeleri & Türkiye
+| Araç | Açıklama | Kaynak |
+| :--- | :--- | :--- |
+| `get_market_indicators` | VIX (korku endeksi), ABD 13 hafta/5/10/30 yıl tahvil faizleri, Dolar Endeksi (DXY), getiri eğrisi yorumu | Yahoo Finance |
+| `get_altin_gram_price` | Altın ons (USD) ve gram altın (TRY) fiyatı — 24 ayar ve 22 ayar (ziynet) | Yahoo Finance |
+| `get_tcmb_snapshot` | Türkiye özeti: ana döviz kurları, TCMB politika faizi, ABD 10Y tahvil, gram altın | Yahoo Finance + TCMB |
+
+### Gelişmiş Analiz
+| Araç | Açıklama | Kaynak |
+| :--- | :--- | :--- |
+| `backtest_portfolio` | Portföy backtest: toplam/yıllık getiri, volatilite, maksimum düşüş, Sharpe, varlık katkıları (TRY→USD çevrimi) | Yahoo Finance OHLC |
+| `get_crypto_fear_greed` | Kripto Korku & Açgözlülük Endeksi (0-100) güncel değer ve 30 günlük geçmiş | alternative.me |
 
 ---
 
@@ -152,17 +172,42 @@ Cursor veya Claude'a doğrudan şunları sorabilirsiniz:
 * *"Bu portföyü analiz et: 100 adet THYAO.IS (maliyet 280), 500 adet GARAN.IS (maliyet 300), 10 adet AAPL (maliyet 150)."*
 * *"GAF fonunun son haftadaki fiyatını göster."*
 * *"VİOP'taki X10 vadeli kontratının fiyatını göster."*
+* *"THYAO hissesinin son 6 ayının RSI, MACD ve Bollinger değerlerini ve teknik görünümünü söyle."*
+* *"AAPL için 50 ve 200 günlük ortalamaya göre trend yukarı mı aşağı mı?"*
+* *"Bugün ABD borsasını en çok ne taşıyan hisseler hangileri?"*
+* *"Şu an VIX kaç, piyasa korku seviyesinde mi? ABD 10 yıllık tahvil faizi ne kadar?"*
+* *"Bugün gram altın kaç TL?"*
+* *"Türkiye'nin kurları, politika faizi ve tahvil getirisi tek bakışta nasıl?"*
+* *"100 adet THYAO.IS ve 20 adet AAPL'dan oluşan portföyün son 1 yılda getirisi, Sharpe'ı ve maksimum düşüşü ne?"*
+* *"Kripto piyasasında şu an korku mu açgözlülük hâkim?"*
 
 ---
 
 ## 🛠️ Geliştirme
 
 ```bash
-npm run dev         # Kod değişikliklerini izler ve otomatik derler
-npm run inspector    # MCP Inspector ile araçları tarayıcıda görsel test eder
+npm run dev           # Kod değişikliklerini izler ve otomatik derler
+npm run lint          # ESLint (TypeScript) kontrolü
+npm run format        # Prettier ile kod formatlama
+npm test              # Derleme + birim testler (node --test)
+npm run check         # lint + format:check + test (CI ile aynı)
+npm run inspector     # MCP Inspector ile araçları tarayıcıda görsel test eder
+```
+
+**Test & Kalite:** `src/utils/*.test.ts` altında saf-matematik fonksiyonlar (indikatörler, istatistik, Türkçe sayı ayrıştırma) için birim testleri bulunur; ağ çağrısı yapılmaz. GitHub Actions (`.github/workflows/ci.yml`) her push/PR'da lint, format kontrolü, derleme ve testleri çalıştırır.
+
+**Proje yapısı:**
+```
+src/
+  index.ts              # Sunucu kurulumu ve tüm araçların kaydı
+  tools/                # Her araç için bir dosya (registerX)
+  utils/
+    yahoo.ts            # Yahoo Finance istemcisi (kotasyon/OHLC/arama)
+    indicators.ts       # RSI, SMA, EMA, MACD, Bollinger, ATR
+    financeMath.ts      # İstatistik ve portföy matematiği
+    fetchWithRetry.ts   # Retry'lı HTTP isteği + hata yanıtı
 ```
 
 ## 📄 Lisans
 
 MIT License © 2026 [metehan05-eng](https://github.com/metehan05-eng)
-# Finance-MCP

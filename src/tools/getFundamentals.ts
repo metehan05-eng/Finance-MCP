@@ -16,7 +16,6 @@ const SUMMARY_MODULES = [
   "price",
 ] as string[];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const num = (v: any) => (v == null ? null : v);
 
 /**
@@ -73,24 +72,39 @@ export function registerGetFundamentals(server: McpServer) {
             trailingPE: round(num(sd.trailingPE) ?? num(k.trailingPE)),
             forwardPE: round(num(k.forwardPE) ?? num(sd.forwardPE)),
             priceToBook: round(num(k.priceToBook)),
-            priceToSales: fd.currentPrice && fd.totalRevenue ? round(fd.currentPrice * (num(k.sharesOutstanding) ?? 0) / fd.totalRevenue) : null,
+            priceToSales:
+              fd.currentPrice && fd.totalRevenue
+                ? round((fd.currentPrice * (num(k.sharesOutstanding) ?? 0)) / fd.totalRevenue)
+                : null,
             priceToFreeCashFlow: marketCap && freeCashflow ? round(marketCap / freeCashflow) : null,
             enterpriseValue: num(k.enterpriseValue) ?? num(fd.enterpriseValue),
           },
           performance: {
-            returnOnEquity: round(num(fd.returnOnEquity) != null ? num(fd.returnOnEquity) * 100 : null),
-            returnOnAssets: round(num(fd.returnOnAssets) != null ? num(fd.returnOnAssets) * 100 : null),
+            returnOnEquity: round(
+              num(fd.returnOnEquity) != null ? num(fd.returnOnEquity) * 100 : null
+            ),
+            returnOnAssets: round(
+              num(fd.returnOnAssets) != null ? num(fd.returnOnAssets) * 100 : null
+            ),
             profitMargin: round(num(fd.profitMargins) != null ? num(fd.profitMargins) * 100 : null),
-            operatingMargin: round(num(fd.operatingMargins) != null ? num(fd.operatingMargins) * 100 : null),
+            operatingMargin: round(
+              num(fd.operatingMargins) != null ? num(fd.operatingMargins) * 100 : null
+            ),
             grossMargin: round(num(fd.grossMargins) != null ? num(fd.grossMargins) * 100 : null),
             eps: num(k.trailingEps),
             forwardEps: num(k.forwardEps),
             beta: round(num(sd.beta) ?? num(k.beta)),
           },
           growth: {
-            revenueGrowth: round(num(fd.revenueGrowth) != null ? num(fd.revenueGrowth) * 100 : null),
-            earningsGrowth: round(num(fd.earningsGrowth) != null ? num(fd.earningsGrowth) * 100 : null),
-            earningsQuarterlyGrowth: round(num(k.earningsQuarterlyGrowth) != null ? num(k.earningsQuarterlyGrowth) * 100 : null),
+            revenueGrowth: round(
+              num(fd.revenueGrowth) != null ? num(fd.revenueGrowth) * 100 : null
+            ),
+            earningsGrowth: round(
+              num(fd.earningsGrowth) != null ? num(fd.earningsGrowth) * 100 : null
+            ),
+            earningsQuarterlyGrowth: round(
+              num(k.earningsQuarterlyGrowth) != null ? num(k.earningsQuarterlyGrowth) * 100 : null
+            ),
           },
           dividend: {
             yieldPct: round(num(sd.dividendYield) != null ? num(sd.dividendYield) * 100 : null),
@@ -126,7 +140,12 @@ export function registerGetFundamentals(server: McpServer) {
             {
               type: "text",
               text: JSON.stringify(
-                { ...fundamentals, source: "Yahoo Finance", dataNote: "Yatırım tavsiyesi değildir. BIST hisselerinde bazı kalemler boş olabilir." },
+                {
+                  ...fundamentals,
+                  source: "Yahoo Finance",
+                  dataNote:
+                    "Yatırım tavsiyesi değildir. BIST hisselerinde bazı kalemler boş olabilir.",
+                },
                 null,
                 2
               ),

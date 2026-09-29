@@ -47,8 +47,12 @@ export function registerGetCorrelation(server: McpServer) {
           fetchOhlc(b, { period, interval }),
         ]);
 
-        const pA = resA.rows.filter((r) => r.close !== null).map((r) => ({ date: r.date.slice(0, 10), close: r.close as number }));
-        const pB = resB.rows.filter((r) => r.close !== null).map((r) => ({ date: r.date.slice(0, 10), close: r.close as number }));
+        const pA = resA.rows
+          .filter((r) => r.close !== null)
+          .map((r) => ({ date: r.date.slice(0, 10), close: r.close as number }));
+        const pB = resB.rows
+          .filter((r) => r.close !== null)
+          .map((r) => ({ date: r.date.slice(0, 10), close: r.close as number }));
 
         if (pA.length < 5 || pB.length < 5) {
           return errorResponse(
@@ -58,15 +62,17 @@ export function registerGetCorrelation(server: McpServer) {
 
         const { xs, ys } = alignByDate(pA, pB);
         if (xs.length < 5) {
-          return errorResponse("İki varlığın tarihleri yeterince örtüşmüyor. Sonuçlar anlamsız olur.");
+          return errorResponse(
+            "İki varlığın tarihleri yeterince örtüşmüyor. Sonuçlar anlamsız olur."
+          );
         }
 
         const rA = priceToReturns(xs);
         const rB = priceToReturns(ys);
         const corr = correlation(rA, rB);
-        const cov = rA
-          .map((v, i) => (v - mean(rA)) * (rB[i] - mean(rB)))
-          .reduce((s, v) => s + v, 0) / (rA.length - 1);
+        const cov =
+          rA.map((v, i) => (v - mean(rA)) * (rB[i] - mean(rB))).reduce((s, v) => s + v, 0) /
+          (rA.length - 1);
 
         return {
           content: [
@@ -99,7 +105,8 @@ export function registerGetCorrelation(server: McpServer) {
                     lastClose: round(ys[ys.length - 1], 2),
                   },
                   source: "Yahoo Finance",
-                  dataNote: "Korelasyon -1 ile +1 arasındadır; +1 birlikte hareket eder, -1 ters hareket eder.",
+                  dataNote:
+                    "Korelasyon -1 ile +1 arasındadır; +1 birlikte hareket eder, -1 ters hareket eder.",
                 },
                 null,
                 2
@@ -117,7 +124,10 @@ export function registerGetCorrelation(server: McpServer) {
 
 function interpretCorrelation(c: number): string {
   const abs = Math.abs(c);
-  if (abs >= 0.9) return c > 0 ? "Çok güçlü pozitif korelasyon — varlıklar birlikte hareket ediyor." : "Çok güçlü negatif korelasyon — varlıklar ters hareket ediyor.";
+  if (abs >= 0.9)
+    return c > 0
+      ? "Çok güçlü pozitif korelasyon — varlıklar birlikte hareket ediyor."
+      : "Çok güçlü negatif korelasyon — varlıklar ters hareket ediyor.";
   if (abs >= 0.7) return c > 0 ? "Güçlü pozitif korelasyon." : "Güçlü negatif korelasyon.";
   if (abs >= 0.5) return c > 0 ? "Orta pozitif korelasyon." : "Orta negatif korelasyon.";
   if (abs >= 0.3) return c > 0 ? "Zayıf pozitif korelasyon." : "Zayıf negatif korelasyon.";

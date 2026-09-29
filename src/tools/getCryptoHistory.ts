@@ -40,7 +40,7 @@ const CRYPTO_SYMBOL_MAP: Record<string, string> = {
   "matic-network": "MATIC-USD",
   polygon: "MATIC-USD",
   pol: "MATIC-USD",
-  "toncoin": "TON11419-USD",
+  toncoin: "TON11419-USD",
   ton: "TON11419-USD",
   near: "NEAR-USD",
   aptos: "APT-USD",
@@ -61,7 +61,7 @@ const CRYPTO_SYMBOL_MAP: Record<string, string> = {
   ldo: "LDO-USD",
   filecoin: "FIL-USD",
   fil: "FIL-USD",
-  "stellar": "XLM-USD",
+  stellar: "XLM-USD",
   xlm: "XLM-USD",
   "the-graph": "GRT-USD",
   grt: "GRT-USD",
@@ -143,7 +143,14 @@ export function registerGetCryptoHistory(server: McpServer) {
             const rate = rateMap.get(d) ?? lastRate;
             lastRate = rate;
             const f = (v: number | null) => (v === null ? null : v * rate);
-            return { ...r, open: f(r.open), high: f(r.high), low: f(r.low), close: f(r.close), adjClose: f(r.adjClose) };
+            return {
+              ...r,
+              open: f(r.open),
+              high: f(r.high),
+              low: f(r.low),
+              close: f(r.close),
+              adjClose: f(r.adjClose),
+            };
           });
           rows = converted;
         }
@@ -195,9 +202,7 @@ export function registerGetCryptoHistory(server: McpServer) {
         };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        return errorResponse(
-          `'${coin}' için kripto geçmişi alınamadı: ${msg}`
-        );
+        return errorResponse(`'${coin}' için kripto geçmişi alınamadı: ${msg}`);
       }
     }
   );

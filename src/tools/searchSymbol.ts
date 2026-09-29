@@ -11,7 +11,10 @@ export function registerSearchSymbol(server: McpServer) {
     "search_symbol",
     "Borsada işlem gören bir varlığı sembolüne veya adına göre arayarak doğru ticker'ı bulmanıza yarar. BIST hisseleri, küresel hisseler, ETF'ler ve endeksler için uygundur. Örn: 'ASELSAN' → ASELS.IS, 'Tesla' → TSLA, 'BIST Banka' → XBANK.IS.",
     {
-      query: z.string().min(1).describe("Aranacak isim veya sembol, örn. 'ASELSAN', 'THY', 'Tesla'"),
+      query: z
+        .string()
+        .min(1)
+        .describe("Aranacak isim veya sembol, örn. 'ASELSAN', 'THY', 'Tesla'"),
       limit: z
         .number()
         .int()

@@ -10,12 +10,26 @@ interface NewsItem {
   source: string | null;
 }
 
-const SUPPORTED_TICKERS = ["XU100.IS", "THYAO.IS", "%5EGSPC", "%5EIXIC", "AAPL", "TSLA", "BTC-USD", "USDTRY=X"];
+const SUPPORTED_TICKERS = [
+  "XU100.IS",
+  "THYAO.IS",
+  "%5EGSPC",
+  "%5EIXIC",
+  "AAPL",
+  "TSLA",
+  "BTC-USD",
+  "USDTRY=X",
+];
 
 /**
  * Yahoo Finance RSS haber akışını ayrıştırır.
  */
-async function fetchNews(ticker: string, region: string, lang: string, limit: number): Promise<NewsItem[]> {
+async function fetchNews(
+  ticker: string,
+  region: string,
+  lang: string,
+  limit: number
+): Promise<NewsItem[]> {
   const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(ticker)}&region=${region}&lang=${lang}`;
   const resp = await fetchWithRetry(url, {
     headers: { Accept: "application/rss+xml", "User-Agent": "Mozilla/5.0" },
@@ -74,7 +88,9 @@ export function registerGetFinancialNews(server: McpServer) {
         const news = await fetchNews(t, region, lang, limit);
 
         if (news.length === 0) {
-          return errorResponse(`'${t}' için haber bulunamadı. Sembol kontrol edin veya XU100.IS deneyin.`);
+          return errorResponse(
+            `'${t}' için haber bulunamadı. Sembol kontrol edin veya XU100.IS deneyin.`
+          );
         }
 
         return {
@@ -88,7 +104,8 @@ export function registerGetFinancialNews(server: McpServer) {
                   itemCount: news.length,
                   items: news,
                   source: "Yahoo Finance RSS",
-                  dataNote: "Haber başlıkları otomatik toplanmıştır, yatırım kararı için ek kaynak doğrulayın.",
+                  dataNote:
+                    "Haber başlıkları otomatik toplanmıştır, yatırım kararı için ek kaynak doğrulayın.",
                 },
                 null,
                 2

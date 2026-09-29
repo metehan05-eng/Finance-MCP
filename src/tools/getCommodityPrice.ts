@@ -81,7 +81,10 @@ export function registerGetCommodityPrice(server: McpServer) {
           );
         }
 
-        const detail = COMMODITY_DETAILS[symbol] ?? { name: quote.longName ?? quote.shortName ?? symbol, unit: null };
+        const detail = COMMODITY_DETAILS[symbol] ?? {
+          name: quote.longName ?? quote.shortName ?? symbol,
+          unit: null,
+        };
 
         return {
           content: [

@@ -37,9 +37,7 @@ export function registerGetTcmbRate(server: McpServer) {
 
         if (!currency) {
           const available = tcmbData.currencies.map((c) => c.code).join(", ");
-          return errorResponse(
-            `'${code}' TCMB bülteninde bulunamadı. Mevcut kodlar: ${available}`
-          );
+          return errorResponse(`'${code}' TCMB bülteninde bulunamadı. Mevcut kodlar: ${available}`);
         }
 
         return {
@@ -71,9 +69,7 @@ export function registerGetTcmbRate(server: McpServer) {
           ],
         };
       } catch (err) {
-        return errorResponse(
-          `Ağ hatası: ${err instanceof Error ? err.message : String(err)}`
-        );
+        return errorResponse(`Ağ hatası: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   );

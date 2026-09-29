@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { fetchWithRetry, errorResponse } from "../utils/fetchWithRetry.js";
 import { parseTrNumber, round } from "../utils/financeMath.js";

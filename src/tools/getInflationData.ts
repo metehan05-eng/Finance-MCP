@@ -18,7 +18,7 @@ async function fetchWorldBankSeries(startYear: number, endYear: number): Promise
   if (!resp.ok) {
     throw new Error(`Dünya Bankası yanıt vermedi (HTTP ${resp.status})`);
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const json: any = await resp.json();
   const rows = (Array.isArray(json) ? json[1] : null) ?? [];
   return rows
@@ -47,11 +47,14 @@ export function registerGetInflationData(server: McpServer) {
       const startYear = endYear - (periods - 1);
 
       try {
-        let data = await fetchWorldBankSeries(startYear, endYear);
+        const data = await fetchWorldBankSeries(startYear, endYear);
 
         // Yıla göre artan (eski → yeni) sırala ve değerleri yuvarıla
         data.sort((a, b) => Number(a.date) - Number(b.date));
-        const rounded = data.map((d) => ({ date: d.date, value: d.value != null ? Number(d.value.toFixed(2)) : d.value }));
+        const rounded = data.map((d) => ({
+          date: d.date,
+          value: d.value != null ? Number(d.value.toFixed(2)) : d.value,
+        }));
 
         if (rounded.length === 0) {
           return errorResponse(
@@ -71,8 +74,7 @@ export function registerGetInflationData(server: McpServer) {
               text: JSON.stringify(
                 {
                   seriesId: SERIES_ID,
-                  description:
-                    "Türkiye TÜFE yıllık % değişim (Dünya Bankası / TÜİK kaynaklı)",
+                  description: "Türkiye TÜFE yıllık % değişim (Dünya Bankası / TÜİK kaynaklı)",
                   frequency: "yıllık (ortalama)",
                   unit: "yıllık % değişim",
                   latestDate: latest.date,
@@ -95,9 +97,7 @@ export function registerGetInflationData(server: McpServer) {
           ],
         };
       } catch (err) {
-        return errorResponse(
-          `Ağ hatası: ${err instanceof Error ? err.message : String(err)}`
-        );
+        return errorResponse(`Ağ hatası: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   );

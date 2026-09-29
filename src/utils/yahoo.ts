@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 // yahoo-finance2 v4 singleton yardımcıları.
 // Tüm Yahoo tabanlı araçlar aynı örneği paylaşır (rate-limit dostu).
 
@@ -77,7 +75,10 @@ export async function fetchOhlc(
 
   const rows: OhlcRow[] = quotes
     .map((q) => ({
-      date: q.date instanceof Date ? q.date.toISOString() : new Date(q.date * 1000 || q.date).toISOString(),
+      date:
+        q.date instanceof Date
+          ? q.date.toISOString()
+          : new Date(q.date * 1000 || q.date).toISOString(),
       open: q.open ?? null,
       high: q.high ?? null,
       low: q.low ?? null,
@@ -147,4 +148,38 @@ export async function searchSymbols(query: string, quotesCount = 8) {
   const yf = await getYahoo();
   const result = await yf.search(query, { quotesCount, newsCount: 0 });
   return result?.quotes ?? [];
+}
+
+/**
+ * Önce doğrudan (küresel), sonuç yoksa BIST (`.IS`) uzantısıyla dener.
+ * Tek denemenin başarısızlığı diğer denemeyi engellemez.
+ */
+export async function tryBoth(
+  input: string,
+  period: string,
+  interval = "1d",
+  startDate?: string,
+  endDate?: string
+): Promise<ChartResult> {
+  let direct: ChartResult | null = null;
+  try {
+    direct = await fetchOhlc(input, { period, interval, startDate, endDate });
+  } catch {
+    /* doğrudan sembol geçersiz olabilir */
+  }
+
+  if (direct && direct.rows.length > 0 && !input.toUpperCase().endsWith(".IS")) {
+    return direct;
+  }
+
+  try {
+    const breve = input.toUpperCase().endsWith(".IS") ? input : `${input}.IS`;
+    const bist = await fetchOhlc(breve, { period, interval, startDate, endDate });
+    if (bist.rows.length > 0) return bist;
+  } catch {
+    /* BIST denemesi de başarısız olabilir */
+  }
+
+  if (direct) return direct;
+  throw new Error("Sembol bulunamadı");
 }
