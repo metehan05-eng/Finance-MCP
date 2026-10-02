@@ -8,7 +8,7 @@ Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açı
 
 ---
 
-## 🚀 Sunulan Araçlar (33 Araç)
+## 🚀 Sunulan Araçlar (38 Araç)
 
 ### Döviz & Para Birimi
 | Araç | Açıklama | Kaynak |
@@ -86,6 +86,21 @@ Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açı
 | :--- | :--- | :--- |
 | `backtest_portfolio` | Portföy backtest: toplam/yıllık getiri, volatilite, maksimum düşüş, Sharpe, varlık katkıları (TRY→USD çevrimi) | Yahoo Finance OHLC |
 | `get_crypto_fear_greed` | Kripto Korku & Açgözlülük Endeksi (0-100) güncel değer ve 30 günlük geçmiş | alternative.me |
+| `get_crypto_market_overview` | Kripto piyasa kapitalizasyonu, 24s hacim/değişim, BTC-ETH dominansı, en çok aranan kriptolar | CoinGecko |
+
+### Temettü, Bilanço & Analist
+| Araç | Açıklama | Kaynak |
+| :--- | :--- | :--- |
+| `get_dividend_history` | Temettü geçmişi, yıllık toplamlar, son 12 ay temettü verimi ve ödeme sürekliliği | Yahoo Finance |
+| `get_earnings_info` | Yaklaşan bilanço tarihi, tahmini EPS/ciro aralığı, tahmin edilen büyüme | Yahoo Finance |
+| `get_analyst_consensus` | Analist tavsiye dağılımı, yükseliş yüzdesi, ortalama/düşük/yüksek hedef fiyat | Yahoo Finance |
+
+### Sistem
+| Araç | Açıklama | Kaynak |
+| :--- | :--- | :--- |
+| `get_data_health` | Tüm veri kaynaklarının erişilebilirliği, yanıt süresi ve önbellek durumu (teşhis) | Çoklu kaynak |
+
+> 📚 İstemciler `finans://tools/catalog` kaynağını okuyarak araç kataloğunu ve örnek soruları görebilir.
 
 ---
 
@@ -98,6 +113,26 @@ git clone https://github.com/metehan05-eng/Finance-MCP.git
 cd Finance-MCP
 npm install
 npm run build
+```
+
+**Docker ile:**
+
+```bash
+docker build -t finans-mcp .
+docker run -i --rm finans-mcp
+```
+
+**Docker'ı MCP istemcisine bağlama (Claude Desktop config):**
+
+```json
+{
+  "mcpServers": {
+    "finans-mcp": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "finans-mcp"]
+    }
+  }
+}
 ```
 
 ---
@@ -190,11 +225,18 @@ npm run dev           # Kod değişikliklerini izler ve otomatik derler
 npm run lint          # ESLint (TypeScript) kontrolü
 npm run format        # Prettier ile kod formatlama
 npm test              # Derleme + birim testler (node --test)
+npm run test:coverage # Birim testler + satır kapsamı raporu
+npm run smoke         # Canlı smoke test (gerçek kaynaklara istek atar, ağ gerekir)
 npm run check         # lint + format:check + test (CI ile aynı)
 npm run inspector     # MCP Inspector ile araçları tarayıcıda görsel test eder
 ```
 
-**Test & Kalite:** `src/utils/*.test.ts` altında saf-matematik fonksiyonlar (indikatörler, istatistik, Türkçe sayı ayrıştırma) için birim testleri bulunur; ağ çağrısı yapılmaz. GitHub Actions (`.github/workflows/ci.yml`) her push/PR'da lint, format kontrolü, derleme ve testleri çalıştırır.
+**Test & Kalite:**
+- `src/**/*.test.ts` altında ağ çağrısı yapmayan birim testleri bulunur (43 test): indikatörler, istatistik, Türkçe sayı ayrıştırma, cache/retry mantığı ve araçların saf yardımcı fonksiyonları.
+- `scripts/smoke.mjs` sunucuyu gerçekten başlatıp 12 aracı canlı kaynaklardan çağırır.
+- GitHub Actions: `ci.yml` her push/PR'da lint + format + derleme + test; `smoke.yml` main'e push'ta ve haftalık canlı test; `release.yml` `v*` etiketinde npm + GitHub release.
+
+**Dayanıklılık:** Yahoo Finance çağrıları kısa TTL'li bellek içi önbellekten geçer ve ağ hatalarında jitter'lı üstel geri çekilmeyle 3 kez yeniden denenir. Bir kaynağın çalışıp çalışmadığını `get_data_health` ile görebilirsiniz.
 
 **Proje yapısı:**
 ```
@@ -202,10 +244,13 @@ src/
   index.ts              # Sunucu kurulumu ve tüm araçların kaydı
   tools/                # Her araç için bir dosya (registerX)
   utils/
-    yahoo.ts            # Yahoo Finance istemcisi (kotasyon/OHLC/arama)
+    yahoo.ts            # Yahoo Finance istemcisi (kotasyon/OHLC/arama, önbellekli)
+    cache.ts            # TTL önbellek + jitter'lı yeniden deneme
     indicators.ts       # RSI, SMA, EMA, MACD, Bollinger, ATR
     financeMath.ts      # İstatistik ve portföy matematiği
     fetchWithRetry.ts   # Retry'lı HTTP isteği + hata yanıtı
+    toolCatalog.ts      # finans://tools/catalog kaynağı
+scripts/smoke.mjs       # Canlı smoke testi
 ```
 
 ## 📄 Lisans

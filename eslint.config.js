@@ -22,5 +22,26 @@ export default tseslint.config(
       "no-console": "off",
     },
   },
+  {
+    // Yardımcı scriptler (Node ESM)
+    files: ["**/*.mjs", "**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        fetch: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        AbortController: "readonly",
+        AbortSignal: "readonly",
+        URL: "readonly",
+      },
+    },
+    rules: {
+      "no-empty": ["error", { allowEmptyCatch: true }],
+    },
+  },
   prettier
 );

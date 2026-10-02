@@ -1,5 +1,13 @@
 // yahoo-finance2 v4 singleton yardımcıları.
 // Tüm Yahoo tabanlı araçlar aynı örneği paylaşır (rate-limit dostu).
+// Ayrıca kısa TTL'li önbellek + yeniden deneme uygulanır.
+
+import { cached as cacheFetch, withRetry } from "./cache.js";
+
+/** Fiyat/kotasyon önbellek TTL'si (saniye). */
+const QUOTE_TTL = 60;
+/** Geçmiş veri (eski mumlar değişmez) için uzun TTL. */
+const HISTORY_TTL = 900;
 
 let cached: any | null = null;
 
@@ -26,6 +34,18 @@ export interface ChartResult {
   exchange: string | null;
   quoteType: string | null;
   rows: OhlcRow[];
+  events?: ChartEvents | null;
+}
+
+/** `chart` çağrısının `events` parametresiyle gelen temettü/ayrım/bölünme verileri. */
+export interface ChartEvents {
+  dividends?: Array<{ date: string | Date; amount: number }>;
+  splits?: Array<{
+    date: string | Date;
+    numerator: number;
+    denominator: number;
+    splitRatio: string;
+  }>;
 }
 
 /**
@@ -41,67 +61,82 @@ export async function fetchOhlc(
     interval?: string;
     startDate?: string;
     endDate?: string;
+    events?: "dividends" | "splits" | "capitalGains" | "div" | "earn" | "all";
   } = {}
 ): Promise<ChartResult> {
-  const yf = await getYahoo();
+  const key = `ohlc:${symbol}:${opts.period ?? "1y"}:${opts.interval ?? "1d"}:${opts.startDate ?? ""}:${opts.endDate ?? ""}:${opts.events ?? ""}`;
 
-  let period1: Date;
-  let gMax = false;
+  return cacheFetch(
+    key,
+    opts.startDate || opts.period === "max" ? HISTORY_TTL : QUOTE_TTL,
+    async () => {
+      const yf = await getYahoo();
 
-  if (opts.startDate) {
-    period1 = new Date(opts.startDate);
-  } else {
-    const p = opts.period ?? "1y";
-    if (p === "max") {
-      period1 = new Date("1985-01-01");
-      gMax = true;
-    } else {
-      const days = PERIOD_DAYS[p] ?? 365;
-      period1 = new Date(Date.now() - days * 86_400_000);
+      let period1: Date;
+      let gMax = false;
+
+      if (opts.startDate) {
+        period1 = new Date(opts.startDate);
+      } else {
+        const p = opts.period ?? "1y";
+        if (p === "max") {
+          period1 = new Date("1985-01-01");
+          gMax = true;
+        } else {
+          const days = PERIOD_DAYS[p] ?? 365;
+          period1 = new Date(Date.now() - days * 86_400_000);
+        }
+      }
+
+      const period2 = opts.endDate ? new Date(opts.endDate) : new Date();
+      const interval = opts.interval ?? "1d";
+
+      const result: any = await withRetry(
+        () =>
+          yf.chart(symbol, {
+            period1,
+            period2,
+            interval,
+            ...(opts.events ? { events: opts.events } : {}),
+          }),
+        { attempts: 3, label: `chart ${symbol}` }
+      );
+
+      const meta: any = result?.meta ?? result?.chart?.result?.[0]?.meta;
+      const quotes: any[] =
+        result?.quotes ?? result?.chart?.result?.[0]?.indicators?.quote?.[0] ?? [];
+
+      const rows: OhlcRow[] = quotes
+        .map((q) => ({
+          date:
+            q.date instanceof Date
+              ? q.date.toISOString()
+              : new Date(q.date * 1000 || q.date).toISOString(),
+          open: q.open ?? null,
+          high: q.high ?? null,
+          low: q.low ?? null,
+          close: q.close ?? null,
+          adjClose: q.adjclose ?? q.adjClose ?? null,
+          volume: q.volume ?? null,
+        }))
+        .filter((r) => r.close !== null);
+
+      if (gMax && rows.length > 4000) {
+        // max veri seti çok büyükse son 4000 günü koru
+        rows.splice(0, rows.length - 4000);
+      }
+
+      return {
+        symbol: meta?.symbol ?? symbol,
+        currency: meta?.currency ?? null,
+        exchange: meta?.exchangeName ?? meta?.fullExchangeName ?? null,
+        quoteType: meta?.instrumentType ?? meta?.quoteType ?? null,
+        rows,
+        events: result?.events ?? null,
+      } as ChartResult;
     }
-  }
-
-  const period2 = opts.endDate ? new Date(opts.endDate) : new Date();
-  const interval = opts.interval ?? "1d";
-
-  const result: any = await yf.chart(symbol, {
-    period1,
-    period2,
-    interval,
-  });
-
-  const meta: any = result?.meta ?? result?.chart?.result?.[0]?.meta;
-  const quotes: any[] = result?.quotes ?? result?.chart?.result?.[0]?.indicators?.quote?.[0] ?? [];
-
-  const rows: OhlcRow[] = quotes
-    .map((q) => ({
-      date:
-        q.date instanceof Date
-          ? q.date.toISOString()
-          : new Date(q.date * 1000 || q.date).toISOString(),
-      open: q.open ?? null,
-      high: q.high ?? null,
-      low: q.low ?? null,
-      close: q.close ?? null,
-      adjClose: q.adjclose ?? q.adjClose ?? null,
-      volume: q.volume ?? null,
-    }))
-    .filter((r) => r.close !== null);
-
-  if (gMax && rows.length > 4000) {
-    // max veri seti çok büyükse son 4000 günü koru
-    rows.splice(0, rows.length - 4000);
-  }
-
-  return {
-    symbol: meta?.symbol ?? symbol,
-    currency: meta?.currency ?? null,
-    exchange: meta?.exchangeName ?? meta?.fullExchangeName ?? null,
-    quoteType: meta?.instrumentType ?? meta?.quoteType ?? null,
-    rows,
-  };
+  );
 }
-
 export const PERIOD_DAYS: Record<string, number> = {
   "1w": 7,
   "1mo": 30,
@@ -114,17 +149,20 @@ export const PERIOD_DAYS: Record<string, number> = {
 
 /**
  * Birden fazla sembolün anlık kotasyonunu tek çağrıda alır.
- * Yahoo geçici ağ hatalarına karşı bir kez yeniden dener.
+ * Kısa TTL önbellek + jitter'lı yeniden deneme ile Yahoo'nun geçici
+ * zaman aşımı / 429 hatalarına dayanıklıdır.
  */
 export async function fetchQuotes(symbols: string[]): Promise<any[]> {
+  if (symbols.length === 0) return [];
   const yf = await getYahoo();
-  let result: any;
-  try {
-    result = await yf.quote(symbols);
-  } catch {
-    result = await yf.quote(symbols);
-  }
-  return Array.isArray(result) ? result : [result];
+  const key = `quotes:${[...symbols].sort().join(",")}`;
+  return cacheFetch(key, QUOTE_TTL, async () => {
+    const result: any = await withRetry(() => yf.quote(symbols), {
+      attempts: 3,
+      label: `quote ${symbols.length} sembol`,
+    });
+    return Array.isArray(result) ? result : [result];
+  });
 }
 
 /**
@@ -132,13 +170,14 @@ export async function fetchQuotes(symbols: string[]): Promise<any[]> {
  */
 export async function fetchQuote(symbol: string): Promise<any> {
   const yf = await getYahoo();
-  let result: any;
-  try {
-    result = await yf.quote(symbol);
-  } catch {
-    result = await yf.quote(symbol);
-  }
-  return Array.isArray(result) ? result[0] : result;
+  const key = `quote:${symbol}`;
+  return cacheFetch(key, QUOTE_TTL, async () => {
+    const result: any = await withRetry(() => yf.quote(symbol), {
+      attempts: 3,
+      label: `quote ${symbol}`,
+    });
+    return Array.isArray(result) ? result[0] : result;
+  });
 }
 
 /**
@@ -146,8 +185,33 @@ export async function fetchQuote(symbol: string): Promise<any> {
  */
 export async function searchSymbols(query: string, quotesCount = 8) {
   const yf = await getYahoo();
-  const result = await yf.search(query, { quotesCount, newsCount: 0 });
-  return result?.quotes ?? [];
+  const key = `search:${query}:${quotesCount}`;
+  return cacheFetch(key, QUOTE_TTL, async () => {
+    const result: any = await withRetry(() => yf.search(query, { quotesCount, newsCount: 0 }), {
+      attempts: 2,
+      label: `search ${query}`,
+    });
+    return result?.quotes ?? [];
+  });
+}
+
+/**
+ * quoteSummary modül çağrısı (önbellekli + yeniden denemeli).
+ * `modules` verilmezse çağrı yapılmaz.
+ */
+export async function fetchQuoteSummary(
+  symbol: string,
+  modules: string[]
+): Promise<Record<string, any>> {
+  const yf = await getYahoo();
+  const key = `qs:${symbol}:${[...modules].sort().join(",")}`;
+  return cacheFetch(key, QUOTE_TTL, async () => {
+    const result: any = await withRetry(() => yf.quoteSummary(symbol, { modules }), {
+      attempts: 3,
+      label: `quoteSummary ${symbol}`,
+    });
+    return result ?? {};
+  });
 }
 
 /**

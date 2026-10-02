@@ -1,0 +1,32 @@
+name: Smoke Test (canlı kaynaklar)
+
+# Gerçek veri kaynaklarına (Yahoo, TCMB, TEFAS, CoinGecko...) canlı istek atar.
+# Rate-limit nedeniyle her PR'da değil: main'e push olduğunda, haftada 1 ve
+# elle tetiklendiğinde çalışır.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: Live smoke test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Smoke test
+        run: node scripts/smoke.mjs

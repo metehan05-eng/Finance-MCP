@@ -1,0 +1,65 @@
+name: Release
+
+# Sürüm etiketi (v1.4.0) push edildiğinde:
+#  - GitHub Release oluşturulur
+#  - npm'e yayınlanır (NPM_TOKEN secret'ı gerekir; yoksa bu adım atlanır)
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Yayınlanacak sürüm (örn. 1.4.0)"
+        required: true
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint, format, test
+        run: npm run check
+
+      - name: Smoke test (canlı kaynaklar)
+        run: node scripts/smoke.mjs
+
+      - name: Package dry-run
+        run: npm pack --dry-run
+
+      - name: Publish to npm
+        if: ${{ env.NPM_TOKEN != '' }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          npm publish --access public
+          rm -f ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## finans-mcp
+
+            Ayrıntılar için [CHANGELOG / README](https://github.com/metehan05-eng/Finance-MCP#readme) dosyasına bakın.
+
+            Tüm veri kaynakları ücretsizdir ve API key gerektirmez.

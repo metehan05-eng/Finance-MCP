@@ -1,24 +1,30 @@
 {
   "name": "finans-mcp",
-  "version": "1.3.0",
-  "description": "Türkiye ve global finans verilerine erişim sağlayan açık kaynak MCP server (döviz, kripto, hisse geçmişi, teknik analiz, makroekonomi, portföy analizi, BIST, haber)",
+  "version": "1.4.0",
+  "description": "Türkiye ve global finans verilerine erişim sağlayan açık kaynak MCP server (döviz, kripto, hisse geçmişi, teknik analiz, temettü, bilanço takvimi, analist konsensüsü, makroekonomi, portföy analizi, BIST, haber)",
   "type": "module",
   "main": "build/index.js",
   "bin": {
     "finans-mcp": "build/index.js"
   },
   "files": [
-    "build"
+    "build",
+    "scripts/smoke.mjs",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc && chmod +x build/index.js",
     "start": "node build/index.js",
     "dev": "tsc --watch",
     "test": "npm run build && node --test \"build/**/*.test.js\"",
-    "lint": "eslint src",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
+    "test:coverage": "npm run build && node --test --experimental-test-coverage \"build/**/*.test.js\"",
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "lint": "eslint src scripts",
+    "format": "prettier --write \"src/**/*.ts\" \"scripts/**/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"scripts/**/*.mjs\"",
     "check": "npm run lint && npm run format:check && npm test",
+    "prepublishOnly": "npm run check",
     "inspector": "npx @modelcontextprotocol/inspector node build/index.js"
   },
   "keywords": [

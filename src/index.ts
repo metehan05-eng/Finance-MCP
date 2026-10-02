@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { registerToolCatalog } from "./utils/toolCatalog.js";
 
 import { registerGetExchangeRate } from "./tools/getExchangeRate.js";
 import { registerGetCryptoPrice } from "./tools/getCryptoPrice.js";
@@ -52,10 +53,19 @@ import { registerGetTcmbSnapshot } from "./tools/getTcmbSnapshot.js";
 import { registerBacktestPortfolio } from "./tools/backtestPortfolio.js";
 import { registerGetCryptoFearGreed } from "./tools/getCryptoFearGreed.js";
 
+// Modül 9: Temettü, Bilanço & Analist
+import { registerGetDividendHistory } from "./tools/getDividendHistory.js";
+import { registerGetEarningsInfo } from "./tools/getEarningsInfo.js";
+import { registerGetAnalystConsensus } from "./tools/getAnalystConsensus.js";
+
+// Modül 10: Kripto Piyasa & Sistem
+import { registerGetCryptoMarketOverview } from "./tools/getCryptoMarketOverview.js";
+import { registerGetDataHealth } from "./tools/getDataHealth.js";
+
 async function main() {
   const server = new McpServer({
     name: "finans-mcp",
-    version: "1.3.0",
+    version: "1.4.0",
   });
 
   // Döviz & para birimi (Frankfurter / ECB)
@@ -117,10 +127,22 @@ async function main() {
   registerBacktestPortfolio(server); // Portföy backtest / performans
   registerGetCryptoFearGreed(server); // Kripto korku-açgözlülük endeksi
 
+  // --- Modül 9: Temettü, Bilanço & Analist ---
+  registerGetDividendHistory(server); // Temettü geçmişi + verim
+  registerGetEarningsInfo(server); // Yaklaşan bilanço tarihi + beklentiler
+  registerGetAnalystConsensus(server); // Analist konsensüsü + hedef fiyat
+
+  // --- Modül 10: Kripto Piyasa & Sistem ---
+  registerGetCryptoMarketOverview(server); // Kripto piyasa genel görünümü
+  registerGetDataHealth(server); // Veri kaynakları sağlık kontrolü
+
+  // Araç kataloğu kaynağı (istemciler doğru aracı seçebilsin diye)
+  registerToolCatalog(server);
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error("finans-mcp v1.3.0 — stdio üzerinde çalışıyor. (33 tool aktif)");
+  console.error("finans-mcp v1.4.0 — stdio üzerinde çalışıyor. (38 tool aktif)");
 }
 
 main().catch((error) => {
