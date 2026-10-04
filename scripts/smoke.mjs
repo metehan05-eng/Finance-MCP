@@ -104,19 +104,35 @@ const send = (method, params) =>
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Sunucu yanıt vermezse sonsuza kadar beklemek yerine net bir hata ver.
-const handshake = send("initialize", {
-  protocolVersion: "2024-11-05",
-  capabilities: {},
-  clientInfo: { name: "smoke", version: "2.0.0" },
+// Zamanlayıcı mutlaka temizlenir: aksi halde elde kalan timer sonradan
+// process.exit(2) çağırıp yeşil koşuyu düşürürdü.
+let handshakeTimer;
+const handshakeTimeout = new Promise((_, reject) => {
+  handshakeTimer = setTimeout(
+    () => reject(new Error("Sunucu 30 sn içinde initialize yanıtı vermedi.")),
+    30_000
+  );
 });
-await Promise.race([
-  handshake,
-  sleep(30_000).then(() => {
-    console.error("Sunucu 30 sn içinde initialize yanıtı vermedi.");
-    proc.kill();
-    process.exit(2);
-  }),
-]);
+handshakeTimer.unref?.();
+
+try {
+  await Promise.race([
+    send("initialize", {
+      protocolVersion: "2024-11-05",
+      capabilities: {},
+      clientInfo: { name: "smoke", version: "2.0.0" },
+    }),
+    handshakeTimeout,
+  ]);
+} catch (err) {
+  console.error(
+    `::error title=Smoke could not start::${err instanceof Error ? err.message : String(err)}`
+  );
+  proc.kill();
+  process.exit(2);
+} finally {
+  clearTimeout(handshakeTimer);
+}
 handshakeDone = true;
 proc.stdin.write(
   JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized", params: {} }) + "\n"
