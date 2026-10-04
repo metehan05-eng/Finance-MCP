@@ -126,6 +126,10 @@ for (const c of selected) {
   await sleep(400);
 
   results.push({ ...c, ok, ms, attempts: attempt, error: lastError });
+
+  // Rate-limit'li kaynaklar (CoinGecko vb.) için vakalar arası kısa bekleme
+  await sleep(400);
+
   const mark = ok ? "OK  " : c.critical || strict ? "HATA" : "UYARI";
   console.log(
     `${mark} ${c.name} (${ms}ms${attempt > 1 ? `, ${attempt}. deneme` : ""}) ${ok ? "" : lastError}`
@@ -153,7 +157,19 @@ if (warned.length > 0) {
   console.log(`\nİsteğe bağlı kaynaklarda sorun (koşu başarılı sayıldı):`);
   for (const w of warned) console.log(`  - ${w.name}: ${w.error}`);
 }
-console.log(
-  blocking.length === 0 ? "\nSONUÇ: başarılı" : "\nSONUÇ: başarısız (kritik vakalar düştü)"
-);
+if (massFailure) {
+  const pct = Math.round((failed.length / results.length) * 100);
+  console.log(
+    `\nSONUÇ: başarısız — vakaların %${pct}'i düştü (eşik %${FAILURE_RATIO * 100}). Sunucu temelinde bozuk olabilir.`
+  );
+  process.exit(1);
+}
+
+if (blocking.length === 0) {
+  console.log("\nSONUÇ: başarılı");
+} else {
+  console.log(
+    `\nSONUÇ: başarısız — kritik vakalar düştü: ${blocking.map((r) => r.name).join(", ")}`
+  );
+}
 process.exit(blocking.length === 0 ? 0 : 1);
