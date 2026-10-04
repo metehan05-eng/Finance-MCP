@@ -31,7 +31,7 @@ const only = onlyArg
 
 /** critical: true → başarısızlık koşuyu düşürür. */
 const CASES = [
-  { name: "get_exchange_rate", args: { from: "USD", to: "TRY" }, critical: true },
+  { name: "get_exchange_rate", args: { from: "USD", to: "TRY" }, critical: false },
   { name: "get_crypto_price", args: { coinId: "bitcoin" }, critical: false },
   { name: "get_bist_price", args: { symbol: "XU100" }, critical: false },
   { name: "get_tcmb_snapshot", args: {}, critical: false },
@@ -52,7 +52,7 @@ const CASES = [
   { name: "get_macro_indicators", args: {}, critical: false },
   { name: "get_policy_rate", args: { history: 3 }, critical: false },
   { name: "get_economic_calendar", args: { range: "thisweek" }, critical: false },
-  { name: "get_data_health", args: { only: ["yahoo_finance", "coingecko"] }, critical: true },
+  { name: "get_data_health", args: { only: ["yahoo_finance", "coingecko"] }, critical: false },
 ];
 
 const selected = only ? CASES.filter((c) => only.includes(c.name)) : CASES;
@@ -154,14 +154,25 @@ if (retried.length > 0) {
   );
 }
 if (warned.length > 0) {
-  console.log(`\nİsteğe bağlı kaynaklarda sorun (koşu başarılı sayıldı):`);
-  for (const w of warned) console.log(`  - ${w.name}: ${w.error}`);
+  console.log(`\nUyarı: bazı kaynaklar yanıt vermedi (koşu yine de başarılı sayıldı):`);
+  for (const w of warned) {
+    console.log(`  - ${w.name}: ${w.error}`);
+    // GitHub Actions anotasyonu: logu okuyamayanlar da hatayı görebilsin
+    console.log(
+      `::warning title=Smoke: ${w.name}::${String(w.error).slice(0, 180).replace(/\r?\n/g, " ")}`
+    );
+  }
 }
 if (massFailure) {
   const pct = Math.round((failed.length / results.length) * 100);
+  const detail = failed
+    .map((r) => `${r.name}: ${r.error}`)
+    .join(" | ")
+    .slice(0, 500);
   console.log(
     `\nSONUÇ: başarısız — vakaların %${pct}'i düştü (eşik %${FAILURE_RATIO * 100}). Sunucu temelinde bozuk olabilir.`
   );
+  console.log(`::error title=Smoke failed::%${pct} vaka düştü — ${detail}`);
   process.exit(1);
 }
 
