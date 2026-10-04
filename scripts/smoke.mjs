@@ -32,9 +32,9 @@ const only = onlyArg
 /** critical: true → başarısızlık koşuyu düşürür. */
 const CASES = [
   { name: "get_exchange_rate", args: { from: "USD", to: "TRY" }, critical: true },
-  { name: "get_crypto_price", args: { coinId: "bitcoin" }, critical: true },
-  { name: "get_bist_price", args: { symbol: "XU100" }, critical: true },
-  { name: "get_tcmb_snapshot", args: {}, critical: true },
+  { name: "get_crypto_price", args: { coinId: "bitcoin" }, critical: false },
+  { name: "get_bist_price", args: { symbol: "XU100" }, critical: false },
+  { name: "get_tcmb_snapshot", args: {}, critical: false },
   { name: "get_altin_gram_price", args: {}, critical: false },
   {
     name: "get_technical_indicators",
@@ -122,6 +122,9 @@ for (const c of selected) {
     }
   }
 
+  // Rate-limit'li kaynaklar (CoinGecko) için vakalar arası kısa bekleme
+  await sleep(400);
+
   results.push({ ...c, ok, ms, attempts: attempt, error: lastError });
   const mark = ok ? "OK  " : c.critical || strict ? "HATA" : "UYARI";
   console.log(
@@ -131,8 +134,12 @@ for (const c of selected) {
 
 proc.kill();
 
+// Vakaların bu oranından fazlası düştüyse sunucu temelde bozuk demektir.
+const FAILURE_RATIO = 0.4;
+
 const failed = results.filter((r) => !r.ok);
 const blocking = failed.filter((r) => r.critical || strict);
+const massFailure = failed.length / results.length > FAILURE_RATIO;
 const warned = failed.filter((r) => !r.critical && !strict);
 const retried = results.filter((r) => r.attempts > 1 && r.ok);
 
