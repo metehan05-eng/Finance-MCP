@@ -58,8 +58,14 @@ export function registerGetTechnicalIndicators(server: McpServer) {
         .max(120)
         .default(60)
         .describe("Döndürülecek son mum sayısı (default: 60)"),
+      compact: z
+        .boolean()
+        .default(false)
+        .describe(
+          "true ise tabloyu atlayıp yalnızca son sinyal özetini döndürür (token tasarrufu)"
+        ),
     },
-    async ({ symbol, period, interval, indicators, limit }) => {
+    async ({ symbol, period, interval, indicators, limit, compact }) => {
       try {
         const chart = await tryBoth(symbol.trim().toUpperCase(), period, interval);
 
@@ -167,9 +173,11 @@ export function registerGetTechnicalIndicators(server: McpServer) {
                   exchange: chart.exchange,
                   period,
                   interval,
-                  dataPoints: rows.length,
+                  totalBars: chart.rows.length,
+                  dataPoints: compact ? 0 : rows.length,
                   lastSignal: last,
-                  data: rows,
+                  data: compact ? undefined : rows,
+                  compact,
                   source: "Yahoo Finance (OHLC) + yerel hesaplama",
                   dataNote:
                     "İndikatörler saf hesaplamadır, yatırım tavsiyesi değildir. SMA200 için en az 200 mum gereklidir.",

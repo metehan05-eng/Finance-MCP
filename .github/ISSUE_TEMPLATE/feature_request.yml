@@ -1,0 +1,31 @@
+name: 💡 Yeni araç / özellik önerisi
+description: Yeni bir veri kaynağı, araç veya iyileştirme önerisi
+labels: enhancement
+body:
+  - type: textarea
+    id: ne
+    attributes:
+      label: Ne eklenmeli?
+      description: Hangi soruyu cevaplamak istiyorsunuz? Somut bir örnek soru yazmak en iyisi.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: kaynak
+    attributes:
+      label: Veri kaynağı
+      description: Hangi ücretsiz API/kaynak kullanılabilir? API anahtarı gerekiyorsa belirtin.
+      render: text
+
+  - type: textarea
+    id: kapsam
+    attributes:
+      label: BIST desteği
+      description: Bu veri BIST hisseleri için de gerekli mi?
+      options:
+        - Evet, BIST dahil olmalı
+        - Sadece global piyasalar
+        - BIST ilgili değil
+    validations:
+      required: true

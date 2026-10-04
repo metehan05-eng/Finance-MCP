@@ -181,6 +181,66 @@ export async function fetchQuote(symbol: string): Promise<any> {
 }
 
 /**
+ * Girdi sembollerini Yahoo'nun tanıdığı gerçek ticker'lara bağlar.
+ *
+ * Neden: kullanıcı "THYAO" yazar ama Yahoo "THYAO.IS" bekler; kur çiftleri ise
+ * "USD/TRY" yerine "USDTRY=X" olarak döner. Her araç bu çözümlemeyi tekrar
+ * yazmasın diye burada toplandı (testler: yahoo.test.ts / araç testleri).
+ *
+ * Strateji: 1) tek batch quote ile toplu kontrol, 2) yalnızca bulunamayanlar için
+ * `.IS` ve `=X` adayları tek tek (cache'li) denenir. Böylece gereksiz istek atılmaz.
+ */
+export async function resolveTickers(symbols: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const list = [...new Set(symbols.map((s) => s.trim()).filter(Boolean))];
+  if (list.length === 0) return out;
+
+  let quotes: any[] = [];
+  try {
+    quotes = await fetchQuotes(list);
+  } catch {
+    quotes = [];
+  }
+
+  const byKey = new Map<string, any>();
+  for (const q of quotes) {
+    if (q?.symbol) byKey.set(q.symbol.toUpperCase(), q);
+  }
+
+  const lookup = (s: string): any | undefined =>
+    byKey.get(s.toUpperCase()) ?? byKey.get(`${s.toUpperCase().replace("/", "=X")}`);
+
+  const missing = list.filter((s) => !lookup(s));
+
+  const resolved = await Promise.all(
+    missing.map(async (s) => {
+      const candidates = s.includes("/")
+        ? [s.replace("/", "=X")]
+        : s.toUpperCase().endsWith(".IS")
+          ? [s]
+          : [s, `${s}.IS`];
+      for (const c of candidates) {
+        try {
+          const q = await fetchQuote(c);
+          if (q?.symbol) return q.symbol as string;
+        } catch {
+          /* sonraki adayı dene */
+        }
+      }
+      return null;
+    })
+  );
+
+  list.forEach((s) => {
+    const hit = lookup(s);
+    if (hit?.symbol) out.set(s, hit.symbol);
+  });
+  missing.forEach((s, i) => out.set(s, resolved[i] ?? s));
+
+  return out;
+}
+
+/**
  * Sembol araması.
  */
 export async function searchSymbols(query: string, quotesCount = 8) {

@@ -3,6 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
 import { getYahoo } from "../utils/yahoo.js";
 import { cacheStats } from "../utils/cache.js";
+import { breakerSnapshot, breakerStatus } from "../utils/httpCircuit.js";
 import { round } from "../utils/financeMath.js";
 
 interface Probe {
@@ -51,7 +52,12 @@ export function registerGetDataHealth(server: McpServer) {
             keyRequired: false,
             run: async () => {
               const yf = await getYahoo();
-              await yf.quote(["XU100.IS"]);
+              await Promise.race([
+                yf.quote(["XU100.IS"]),
+                new Promise((_, rej) =>
+                  setTimeout(() => rej(new Error("timeout (12s)")), TIMEOUT_MS)
+                ),
+              ]);
             },
           },
           {
@@ -230,9 +236,18 @@ export function registerGetDataHealth(server: McpServer) {
                     allUp: up === results.length,
                   },
                   cache: cacheStats(),
+                  circuitBreakers: {
+                    open: breakerSnapshot().map(({ host, status }) => ({
+                      host,
+                      failures: status.failures,
+                      openedAt: status.openedAt ? new Date(status.openedAt).toISOString() : null,
+                      retryInMs: breakerStatus(host).retryInMs,
+                    })),
+                    note: "Açık devreler şu anda istek kabul edilmiyor; araçlar anında bilgilendirici hata döner.",
+                  },
                   sources: results,
                   dataNote:
-                    "Durum anlıktır; ağ koşullarına göre değişir. Yahoo sık zaman aşımına düşebilir (araçlar bunu önbellek ve tekrar deneme ile telafi eder).",
+                    "Durum anlıktır; ağ koşullarına göre değişir. Yahoo sık zaman aşımına düşebilir; araçlar bunu önbellek, tekrar deneme ve devre kesici ile telafi eder.",
                 },
                 null,
                 2

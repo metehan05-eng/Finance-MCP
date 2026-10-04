@@ -44,8 +44,14 @@ export function registerGetStockHistory(server: McpServer) {
         .max(2000)
         .default(250)
         .describe("Döndürülecek maksimum veri noktası sayısı (default: 250)"),
+      summaryOnly: z
+        .boolean()
+        .default(false)
+        .describe(
+          "true ise mum satırlarını atlayıp yalnızca özet istatistikleri döndürür (min/max/ortalama, toplam getiri, volatilite)"
+        ),
     },
-    async ({ symbol, period, interval, startDate, endDate, limit }) => {
+    async ({ symbol, period, interval, startDate, endDate, limit, summaryOnly }) => {
       const input = symbol.trim().toUpperCase();
 
       try {
@@ -96,7 +102,9 @@ export function registerGetStockHistory(server: McpServer) {
                   exchange: chart.exchange,
                   period: startDate ? `${startDate} → ${endDate ?? "bugün"}` : period,
                   interval,
-                  dataPoints: rows.length,
+                  totalBars: chart.rows.length,
+                  dataPoints: summaryOnly ? 0 : rows.length,
+                  summaryOnly,
                   summary: {
                     firstClose: round(first),
                     lastClose: round(last),
@@ -106,7 +114,7 @@ export function registerGetStockHistory(server: McpServer) {
                     periodHigh: round(maxHigh),
                     avgVolume: avgVolume ? Math.round(avgVolume) : null,
                   },
-                  data: rows,
+                  data: summaryOnly ? undefined : rows,
                   source: "Yahoo Finance",
                   dataNote: "Veriler 15 dakika gecikmeli olabilir. Yatırım tavsiyesi değildir.",
                 },

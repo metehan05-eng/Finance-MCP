@@ -1,7 +1,16 @@
 #!/usr/bin/env node
-// Canlı smoke test: MCP sunucusunu başlatır, birkaç aracı gerçek kaynaklardan çağırır.
-// Ağ gerektirir; CI'da her PR'da değil, ayrı workflow'da çalıştırılır.
-// Kullanım: node scripts/smoke.mjs
+// Canlı smoke test: MCP sunucusunu başlatır, araçları gerçek kaynaklardan çağırır.
+//
+// Ağ gerektirir. CI'da haftalık ve main'e push'ta çalışır.
+// GitHub runner IP'leri zaman zaman kaynaklar tarafından engellendiği için:
+//   - her vaka 2 kez yeniden denenir (üstel geri çekilme)
+//   - "zorunlu" vakalar (çekirdek işlevler) başarısız olursa koşu başarısız
+//   - "isteğe bağlı" vakalar başarısız olursa koşu başarılı sayılır, uyarı verir
+//
+// Kullanım:
+//   node scripts/smoke.mjs            # varsayılan: toleranslı
+//   node scripts/smoke.mjs --strict   # tüm vakalar zorunlu
+//   node scripts/smoke.mjs --only=get_dividend_history,get_analyst_consensus
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -10,20 +19,47 @@ import { dirname, resolve } from "node:path";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const serverPath = resolve(root, "build/index.js");
 
+const argv = process.argv.slice(2);
+const strict = argv.includes("--strict");
+const onlyArg = argv.find((a) => a.startsWith("--only="));
+const only = onlyArg
+  ? onlyArg
+      .split("=")[1]
+      .split(",")
+      .map((s) => s.trim())
+  : null;
+
+/** critical: true → başarısızlık koşuyu düşürür. */
 const CASES = [
-  ["get_exchange_rate", { from: "USD", to: "TRY" }],
-  ["get_bist_price", { symbol: "XU100" }],
-  ["get_crypto_price", { coinId: "bitcoin" }],
-  ["get_tcmb_snapshot", {}],
-  ["get_altin_gram_price", {}],
-  ["get_technical_indicators", { symbol: "AAPL", period: "1y", limit: 3 }],
-  ["get_dividend_history", { symbol: "GARAN", years: 3 }],
-  ["get_analyst_consensus", { symbol: "THYAO" }],
-  ["get_crypto_market_overview", {}],
-  ["get_fund_price", { fundCode: "GAF" }],
-  ["get_macro_indicators", {}],
-  ["get_data_health", { only: ["yahoo_finance", "coingecko"] }],
+  { name: "get_exchange_rate", args: { from: "USD", to: "TRY" }, critical: true },
+  { name: "get_crypto_price", args: { coinId: "bitcoin" }, critical: true },
+  { name: "get_bist_price", args: { symbol: "XU100" }, critical: true },
+  { name: "get_tcmb_snapshot", args: {}, critical: true },
+  { name: "get_altin_gram_price", args: {}, critical: false },
+  {
+    name: "get_technical_indicators",
+    args: { symbol: "AAPL", period: "1y", limit: 3 },
+    critical: false,
+  },
+  { name: "get_dividend_history", args: { symbol: "GARAN", years: 3 }, critical: false },
+  { name: "get_analyst_consensus", args: { symbol: "THYAO" }, critical: false },
+  { name: "get_earnings_info", args: { symbol: "AAPL" }, critical: false },
+  { name: "get_crypto_market_overview", args: {}, critical: false },
+  { name: "get_market_indicators", args: {}, critical: false },
+  { name: "get_watchlist", args: { symbols: ["THYAO", "AAPL", "BTC-USD"] }, critical: false },
+  { name: "get_sector_performance", args: { period: "1mo" }, critical: false },
+  { name: "get_fund_price", args: { fundCode: "GAF" }, critical: false },
+  { name: "get_macro_indicators", args: {}, critical: false },
+  { name: "get_policy_rate", args: { history: 3 }, critical: false },
+  { name: "get_economic_calendar", args: { range: "thisweek" }, critical: false },
+  { name: "get_data_health", args: { only: ["yahoo_finance", "coingecko"] }, critical: true },
 ];
+
+const selected = only ? CASES.filter((c) => only.includes(c.name)) : CASES;
+if (selected.length === 0) {
+  console.error("--only ile eşleşen vaka yok:", only.join(", "));
+  process.exit(2);
+}
 
 const proc = spawn("node", [serverPath], { stdio: ["pipe", "pipe", "inherit"] });
 const rl = createInterface({ input: proc.stdout });
@@ -37,7 +73,9 @@ rl.on("line", (line) => {
       pending.get(msg.id)(msg);
       pending.delete(msg.id);
     }
-  } catch {}
+  } catch {
+    /* stdout'ta JSON olmayan satırları yoksay */
+  }
 });
 
 const send = (method, params) =>
@@ -47,10 +85,12 @@ const send = (method, params) =>
     proc.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: mid, method, params }) + "\n");
   });
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 await send("initialize", {
   protocolVersion: "2024-11-05",
   capabilities: {},
-  clientInfo: { name: "smoke", version: "1.0.0" },
+  clientInfo: { name: "smoke", version: "2.0.0" },
 });
 proc.stdin.write(
   JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized", params: {} }) + "\n"
@@ -59,17 +99,54 @@ proc.stdin.write(
 const toolList = await send("tools/list", {});
 console.log(`Kayıtlı araç sayısı: ${toolList.result.tools.length}`);
 
-let failed = 0;
-for (const [name, args] of CASES) {
-  const started = Date.now();
-  const res = await send("tools/call", { name, arguments: args });
-  const ms = Date.now() - started;
-  const text = res.result?.content?.[0]?.text ?? "";
-  const ok = !res.result?.isError;
-  if (!ok) failed++;
-  console.log(`${ok ? "OK  " : "HATA"} ${name} (${ms}ms) ${ok ? "" : text.slice(0, 120)}`);
+const results = [];
+for (const c of selected) {
+  let attempt = 0;
+  let lastError = "";
+  let ok = false;
+  let ms = 0;
+
+  while (attempt < 2 && !ok) {
+    attempt++;
+    const started = Date.now();
+    const res = await send("tools/call", { name: c.name, arguments: c.args });
+    ms = Date.now() - started;
+    const text = res.result?.content?.[0]?.text ?? JSON.stringify(res.error ?? res.result);
+    ok = !res.result?.isError;
+    if (!ok) {
+      lastError = text.replace(/\s+/g, " ").slice(0, 130);
+      if (attempt < 2) {
+        console.log(`  ↻ ${c.name} başarısız, tekrar deneniyor…`);
+        await sleep(1500 * attempt);
+      }
+    }
+  }
+
+  results.push({ ...c, ok, ms, attempts: attempt, error: lastError });
+  const mark = ok ? "OK  " : c.critical || strict ? "HATA" : "UYARI";
+  console.log(
+    `${mark} ${c.name} (${ms}ms${attempt > 1 ? `, ${attempt}. deneme` : ""}) ${ok ? "" : lastError}`
+  );
 }
 
 proc.kill();
-console.log(`\n${CASES.length - failed}/${CASES.length} smoke testi başarılı`);
-process.exit(failed > 0 ? 1 : 0);
+
+const failed = results.filter((r) => !r.ok);
+const blocking = failed.filter((r) => r.critical || strict);
+const warned = failed.filter((r) => !r.critical && !strict);
+const retried = results.filter((r) => r.attempts > 1 && r.ok);
+
+console.log(`\n${results.length - failed.length}/${results.length} vaka başarılı`);
+if (retried.length > 0) {
+  console.log(
+    `(↻ ${retried.length} vaka ancak tekrar denemede geçti: ${retried.map((r) => r.name).join(", ")})`
+  );
+}
+if (warned.length > 0) {
+  console.log(`\nİsteğe bağlı kaynaklarda sorun (koşu başarılı sayıldı):`);
+  for (const w of warned) console.log(`  - ${w.name}: ${w.error}`);
+}
+console.log(
+  blocking.length === 0 ? "\nSONUÇ: başarılı" : "\nSONUÇ: başarısız (kritik vakalar düştü)"
+);
+process.exit(blocking.length === 0 ? 0 : 1);

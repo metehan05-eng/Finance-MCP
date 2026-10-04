@@ -8,7 +8,7 @@ Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açı
 
 ---
 
-## 🚀 Sunulan Araçlar (38 Araç)
+## 🚀 Sunulan Araçlar (42 Araç)
 
 ### Döviz & Para Birimi
 | Araç | Açıklama | Kaynak |
@@ -95,12 +95,22 @@ Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açı
 | `get_earnings_info` | Yaklaşan bilanço tarihi, tahmini EPS/ciro aralığı, tahmin edilen büyüme | Yahoo Finance |
 | `get_analyst_consensus` | Analist tavsiye dağılımı, yükseliş yüzdesi, ortalama/düşük/yüksek hedef fiyat | Yahoo Finance |
 
+### Şirket, Karşılaştırma & Sektör
+| Araç | Açıklama | Kaynak |
+| :--- | :--- | :--- |
+| `get_company_profile` | Şirket profili: sektör, sanayi, ülke, çalışan sayısı, web sitesi, iş özeti | Yahoo Finance |
+| `compare_stocks` | 2-8 hisseyi fiyat, piyasa değeri, F/K, F/DD, ROE, temettü verimi, 52 hafta, beta ile karşılaştırır | Yahoo Finance |
+| `get_sector_performance` | 11 ABD sektör ETF'i ile dönem getirisi sıralaması, en güçlü/zayıf sektör | Yahoo Finance |
+| `get_watchlist` | 20 sembole kadar izleme listesi: anlık durum, en çok yükselen/düşen | Yahoo Finance |
+
 ### Sistem
 | Araç | Açıklama | Kaynak |
 | :--- | :--- | :--- |
-| `get_data_health` | Tüm veri kaynaklarının erişilebilirliği, yanıt süresi ve önbellek durumu (teşhis) | Çoklu kaynak |
+| `get_data_health` | Tüm veri kaynaklarının erişilebilirliği, yanıt süresi, önbellek ve devre kesici durumu (teşhis) | Çoklu kaynak |
 
 > 📚 İstemciler `finans://tools/catalog` kaynağını okuyarak araç kataloğunu ve örnek soruları görebilir.
+>
+> 🧩 **Hazır soru şablonları** (`prompts/list`): `market_morning_brief` (sabah brifingi), `stock_deep_dive` (hisse derinlemesine analiz), `portfolio_review` (portföy değerlendirme), `data_source_diagnosis` (kaynak teşhisi).
 
 ---
 
@@ -232,11 +242,11 @@ npm run inspector     # MCP Inspector ile araçları tarayıcıda görsel test e
 ```
 
 **Test & Kalite:**
-- `src/**/*.test.ts` altında ağ çağrısı yapmayan birim testleri bulunur (43 test): indikatörler, istatistik, Türkçe sayı ayrıştırma, cache/retry mantığı ve araçların saf yardımcı fonksiyonları.
+- `src/**/*.test.ts` altında ağ çağrısı yapmayan birim testleri bulunur (78 test): indikatörler, istatistik, Türkçe sayı ayrıştırma, cache/retry mantığı ve araçların saf yardımcı fonksiyonları.
 - `scripts/smoke.mjs` sunucuyu gerçekten başlatıp 12 aracı canlı kaynaklardan çağırır.
 - GitHub Actions: `ci.yml` her push/PR'da lint + format + derleme + test; `smoke.yml` main'e push'ta ve haftalık canlı test; `release.yml` `v*` etiketinde npm + GitHub release.
 
-**Dayanıklılık:** Yahoo Finance çağrıları kısa TTL'li bellek içi önbellekten geçer ve ağ hatalarında jitter'lı üstel geri çekilmeyle 3 kez yeniden denenir. Bir kaynağın çalışıp çalışmadığını `get_data_health` ile görebilirsiniz.
+**Dayanıklılık:** Tüm kaynak çağrıları kaynak bazlı TTL'li bellek içi önbellekten geçer (kurlar 60 sn, makro 30 dk) ve ağ hatalarında jitter'lı üstel geri çekilmeyle 3 kez yeniden denenir. Sürekli hata veren bir kaynak için **devre kesici** devreye girer ve 45 sn boyunca anında bilgilendirici hata döner — böylece engellenmiş bir kaynağa istek atmak zaman kaybı yaratmaz. Durumu `get_data_health` ile görebilirsiniz.
 
 **Proje yapısı:**
 ```
@@ -248,8 +258,11 @@ src/
     cache.ts            # TTL önbellek + jitter'lı yeniden deneme
     indicators.ts       # RSI, SMA, EMA, MACD, Bollinger, ATR
     financeMath.ts      # İstatistik ve portföy matematiği
-    fetchWithRetry.ts   # Retry'lı HTTP isteği + hata yanıtı
+    fetchWithRetry.ts   # Retry'lı + önbellekli HTTP isteği + hata yanıtı
+    httpCircuit.ts      # Host bazlı devre kesici
+    resolveTickers      # THYAO → THYAO.IS sembol çözümlemesi (yahoo.ts içinde)
     toolCatalog.ts      # finans://tools/catalog kaynağı
+    financePrompts.ts   # Hazır soru şablonları (MCP prompts)
 scripts/smoke.mjs       # Canlı smoke testi
 ```
 

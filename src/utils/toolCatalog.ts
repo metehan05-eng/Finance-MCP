@@ -98,6 +98,35 @@ export function registerToolCatalog(server: McpServer): void {
       description: "Tüm veri kaynaklarının erişilebilirliği ve yanıt süreleri (teşhis aracı).",
       examples: ["Hangi veri kaynağı çalışmıyor?"],
     },
+    {
+      name: "get_company_profile",
+      description: "Şirket profili: sektör, sanayi, ülke, çalışan sayısı, web sitesi, iş özeti.",
+      examples: ["THYAO hangi sektörde, kaç kişi çalışıyor?"],
+    },
+    {
+      name: "compare_stocks",
+      description:
+        "2-8 hisseyi fiyat, piyasa değeri, F/K, F/DD, ROE, temettü verimi, 52 hafta ve beta bazında yan yana karşılaştırır.",
+      examples: ["THYAO ile GARAN'ı karşılaştır", "AAPL ve NVDA hangisi daha ucuz?"],
+    },
+    {
+      name: "get_sector_performance",
+      description:
+        "ABD sektör performansı: 11 sektör ETF'i üzerinden dönem getirisi sıralaması, en güçlü/zayıf sektör.",
+      examples: ["Bu ay hangi sektör öne çıktı?", "ABD sektörleri nasıl?"],
+    },
+    {
+      name: "get_watchlist",
+      description:
+        "İzleme listesi anlık durumu: fiyat, günlük/52 haftalık değişim, en çok yükselen-düşen.",
+      examples: ["Takip listemi kontrol et", "THYAO, GARAN, BTC-USD durumu nedir?"],
+    },
+    {
+      name: "prompts (MCP şablonları)",
+      description:
+        "Hazır soru şablonları: market_morning_brief, stock_deep_dive, portfolio_review, data_source_diagnosis.",
+      examples: ["Sabah brifingi hazırla", "THYAO'yu derinlemesine analiz et"],
+    },
   ];
 
   server.registerResource(

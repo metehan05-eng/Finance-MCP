@@ -1,0 +1,48 @@
+name: 🐛 Hata bildirimi
+description: Bir araç yanlış/eksik veri döndürüyor veya hata veriyor
+labels: bug
+body:
+  - type: textarea
+    id: arac
+    attributes:
+      label: Hangi araç?
+      description: Örn. get_dividend_history, get_analyst_consensus
+      placeholder: get_dividend_history
+    validations:
+      required: true
+
+  - type: textarea
+    id: cagri
+    attributes:
+      label: Çağrı ve yanıt
+      description: Araç çağrısının çıktısı (hata mesajı dahil). Sembolleri ve parametreleri yazın.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: beklenen
+    attributes:
+      label: Beklenen sonuç
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ortam
+    attributes:
+      label: Ortam
+      options:
+        - Node.js ile lokal çalıştırma
+        - Docker
+        - Claude Desktop / Cursor istemcisi
+        - GitHub Actions (CI/smoke)
+    validations:
+      required: true
+
+  - type: textarea
+    id: ek
+    attributes:
+      label: Ek bilgi
+      description: Sürüm (get_data_health çıktısı), işletim sistemi, tekrarlanma sıklığı
+      render: text

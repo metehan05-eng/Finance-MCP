@@ -62,10 +62,16 @@ import { registerGetAnalystConsensus } from "./tools/getAnalystConsensus.js";
 import { registerGetCryptoMarketOverview } from "./tools/getCryptoMarketOverview.js";
 import { registerGetDataHealth } from "./tools/getDataHealth.js";
 
+import { registerGetCompanyProfile } from "./tools/getCompanyProfile.js";
+import { registerCompareStocks } from "./tools/compareStocks.js";
+import { registerGetSectorPerformance } from "./tools/getSectorPerformance.js";
+import { registerGetWatchlist } from "./tools/getWatchlist.js";
+import { registerFinancePrompts } from "./utils/financePrompts.js";
+
 async function main() {
   const server = new McpServer({
     name: "finans-mcp",
-    version: "1.4.0",
+    version: "1.5.0",
   });
 
   // Döviz & para birimi (Frankfurter / ECB)
@@ -136,13 +142,22 @@ async function main() {
   registerGetCryptoMarketOverview(server); // Kripto piyasa genel görünümü
   registerGetDataHealth(server); // Veri kaynakları sağlık kontrolü
 
+  // --- Modül 11: Şirket & Karşılaştırma ---
+  registerGetCompanyProfile(server); // Şirket profili (sektör, çalışan, iş özeti)
+  registerCompareStocks(server); // Çoklu hisse karşılaştırma tablosu
+  registerGetSectorPerformance(server); // ABD sektör performans sıralaması
+  registerGetWatchlist(server); // İzleme listesi anlık durum
+
   // Araç kataloğu kaynağı (istemciler doğru aracı seçebilsin diye)
   registerToolCatalog(server);
+
+  // Hazır soru şablonları (prompt/list)
+  registerFinancePrompts(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error("finans-mcp v1.4.0 — stdio üzerinde çalışıyor. (38 tool aktif)");
+  console.error("finans-mcp v1.5.0 — stdio üzerinde çalışıyor. (42 tool, 4 prompt aktif)");
 }
 
 main().catch((error) => {
