@@ -28,5 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # build/ gitignore'ludur; scripts/smoke.mjs derlenmiş build/index.js'i çalıştırır
+      - name: Build
+        run: npm run build
+
       - name: Smoke test
         run: node scripts/smoke.mjs

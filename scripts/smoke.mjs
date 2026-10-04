@@ -12,6 +12,7 @@
 //   node scripts/smoke.mjs --strict   # tüm vakalar zorunlu
 //   node scripts/smoke.mjs --only=get_dividend_history,get_analyst_consensus
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -61,7 +62,22 @@ if (selected.length === 0) {
   process.exit(2);
 }
 
+if (!existsSync(serverPath)) {
+  console.error(
+    `Derlenmiş sunucu bulunamadı: ${serverPath}\nÖnce "npm run build" çalıştırın (CI'da build adımı gerekir).`
+  );
+  process.exit(2);
+}
+
 const proc = spawn("node", [serverPath], { stdio: ["pipe", "pipe", "inherit"] });
+
+let handshakeDone = false;
+proc.on("exit", (code) => {
+  if (!handshakeDone) {
+    console.error(`Sunucu beklenenden erken kapandı (exit ${code}).`);
+    process.exit(2);
+  }
+});
 const rl = createInterface({ input: proc.stdout });
 
 let id = 0;
@@ -87,11 +103,21 @@ const send = (method, params) =>
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-await send("initialize", {
+// Sunucu yanıt vermezse sonsuza kadar beklemek yerine net bir hata ver.
+const handshake = send("initialize", {
   protocolVersion: "2024-11-05",
   capabilities: {},
   clientInfo: { name: "smoke", version: "2.0.0" },
 });
+await Promise.race([
+  handshake,
+  sleep(30_000).then(() => {
+    console.error("Sunucu 30 sn içinde initialize yanıtı vermedi.");
+    proc.kill();
+    process.exit(2);
+  }),
+]);
+handshakeDone = true;
 proc.stdin.write(
   JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized", params: {} }) + "\n"
 );
