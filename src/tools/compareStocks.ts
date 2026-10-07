@@ -93,7 +93,16 @@ export function sortByKey(
 /**
  * Çoklu hisse karşılaştırma tablosu (fiyat, değerleme, verim, 52 hafta).
  */
-export function registerCompareStocks(server: McpServer) {
+/** Test edilebilirlik için dış bağımlılıklar; varsayılanlar gerçek kaynaklardır. */
+export interface CompareDeps {
+  resolveTickers: typeof resolveTickers;
+  fetchQuoteSummary: typeof fetchQuoteSummary;
+  fetchQuote: typeof fetchQuote;
+}
+
+export const DEFAULT_COMPARE_DEPS: CompareDeps = { resolveTickers, fetchQuoteSummary, fetchQuote };
+
+export function registerCompareStocks(server: McpServer, deps: CompareDeps = DEFAULT_COMPARE_DEPS) {
   server.tool(
     "compare_stocks",
     "2-8 hisseyi yan yana karşılaştırır: fiyat, günlük değişim, piyasa değeri, F/K, F/DD, ROE, temettü verimi, 52 hafta yükseğe uzaklık ve beta. BIST dahil tüm borsalar.",
@@ -127,19 +136,19 @@ export function registerCompareStocks(server: McpServer) {
       }
 
       // Sembolleri gerçek ticker'a bağla (THYAO → THYAO.IS, USD/TRY → USDTRY=X)
-      const resolved = await resolveTickers(upper);
+      const resolved = await deps.resolveTickers(upper);
 
       const targets = upper.map((s) => resolved.get(s) ?? s);
       try {
         const summaries = await Promise.all(
           targets.map((t) =>
-            fetchQuoteSummary(t, ["summaryDetail", "defaultKeyStatistics", "financialData"]).catch(
-              () => ({}) as Record<string, any>
-            )
+            deps
+              .fetchQuoteSummary(t, ["summaryDetail", "defaultKeyStatistics", "financialData"])
+              .catch(() => ({}) as Record<string, any>)
           )
         );
         const quotesByTarget = await Promise.all(
-          targets.map((t) => fetchQuote(t).catch(() => undefined))
+          targets.map((t) => deps.fetchQuote(t).catch(() => undefined))
         );
         const quoteBySymbol = new Map(
           quotesByTarget.filter((q) => q?.symbol).map((q) => [q.symbol.toUpperCase(), q] as const)

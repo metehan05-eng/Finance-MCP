@@ -48,7 +48,18 @@ export function bestSector(rows: SectorPerf[]): SectorPerf | null {
 /**
  * ABD sektör performansı: 11 sektör ETF'inin dönem getirisi ve sıralaması.
  */
-export function registerGetSectorPerformance(server: McpServer) {
+/** Test edilebilirlik için dış bağımlılıklar; varsayılanlar gerçek kaynaklardır. */
+export interface SectorDeps {
+  fetchOhlc: typeof fetchOhlc;
+  fetchQuotes: typeof fetchQuotes;
+}
+
+export const DEFAULT_SECTOR_DEPS: SectorDeps = { fetchOhlc, fetchQuotes };
+
+export function registerGetSectorPerformance(
+  server: McpServer,
+  deps: SectorDeps = DEFAULT_SECTOR_DEPS
+) {
   server.tool(
     "get_sector_performance",
     "ABD piyasasında 11 sektörün performansını karşılaştırır (sektör ETF'leri üzerinden): günlük/haftalık/aylık/3 aylık getiri sıralaması, en güçlü ve en zayıf sektör.",
@@ -81,7 +92,7 @@ export function registerGetSectorPerformance(server: McpServer) {
           Promise.all(
             SECTOR_ETFS.map(async (etf) => {
               try {
-                const chart = await fetchOhlc(etf.symbol, { period: range, interval });
+                const chart = await deps.fetchOhlc(etf.symbol, { period: range, interval });
                 const closes = chart.rows.map((r) => r.close as number | null);
                 return {
                   symbol: etf.symbol,
@@ -102,7 +113,7 @@ export function registerGetSectorPerformance(server: McpServer) {
           includeGlobal
             ? (async () => {
                 const symbols = ["SPY", "QQQ", "DIA", "EEM", "TLT"];
-                const quotes = await fetchQuotes(symbols);
+                const quotes = await deps.fetchQuotes(symbols);
                 const by = new Map(
                   (quotes as any[]).filter((q) => q?.symbol).map((q) => [q.symbol, q] as const)
                 );

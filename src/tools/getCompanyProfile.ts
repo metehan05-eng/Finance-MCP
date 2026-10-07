@@ -32,6 +32,7 @@ export function normalizeProfile(raw: Record<string, unknown> | undefined): Comp
 /** İş özetini LLM için kısaltır. */
 export function clampSummary(summary: string | null, maxChars: number): string | null {
   if (!summary) return null;
+  if (maxChars <= 0) return null;
   if (summary.length <= maxChars) return summary;
   return summary.slice(0, maxChars).trimEnd() + "…";
 }
@@ -40,7 +41,18 @@ export function clampSummary(summary: string | null, maxChars: number): string |
  * Şirket profili: sektör, sanayi, ülke, çalışan sayısı ve iş özeti.
  * BIST dahil tüm borsalar (Yahoo summaryProfile).
  */
-export function registerGetCompanyProfile(server: McpServer) {
+/** Test edilebilirlik için dış bağımlılıklar; varsayılanlar gerçek kaynaklardır. */
+export interface ProfileDeps {
+  resolveTickers: typeof resolveTickers;
+  fetchQuoteSummary: typeof fetchQuoteSummary;
+}
+
+export const DEFAULT_PROFILE_DEPS: ProfileDeps = { resolveTickers, fetchQuoteSummary };
+
+export function registerGetCompanyProfile(
+  server: McpServer,
+  deps: ProfileDeps = DEFAULT_PROFILE_DEPS
+) {
   server.tool(
     "get_company_profile",
     "Bir şirketin profil bilgilerini döndürür: sektör, sanayi, ülke, çalışan sayısı, web sitesi ve iş özeti. BIST dahil tüm borsaları destekler. Örn: 'THYAO hangi sektörde?'",
@@ -58,8 +70,8 @@ export function registerGetCompanyProfile(server: McpServer) {
     async ({ symbol, summaryLength }) => {
       try {
         const upper = symbol.toUpperCase();
-        const resolved = (await resolveTickers([upper])).get(upper) ?? upper;
-        const data = await fetchQuoteSummary(resolved, ["summaryProfile", "price"]);
+        const resolved = (await deps.resolveTickers([upper])).get(upper) ?? upper;
+        const data = await deps.fetchQuoteSummary(resolved, ["summaryProfile", "price"]);
 
         const profile = normalizeProfile(data.summaryProfile);
         const price = data.price ?? {};

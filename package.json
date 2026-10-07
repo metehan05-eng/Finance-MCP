@@ -1,6 +1,6 @@
 {
   "name": "finans-mcp",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Türkiye ve global finans verilerine erişim sağlayan açık kaynak MCP server (döviz, kripto, hisse geçmişi, teknik analiz, temettü, bilanço takvimi, analist konsensüsü, makroekonomi, portföy analizi, BIST, haber)",
   "type": "module",
   "main": "build/index.js",
@@ -10,6 +10,7 @@
   "files": [
     "build",
     "scripts/smoke.mjs",
+    "scripts/claude-mcp.mjs",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
@@ -42,7 +43,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "fast-xml-parser": "^4.4.1",
-    "yahoo-finance2": "^4.0.2",
+    "yahoo-finance2": "^4.0.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {

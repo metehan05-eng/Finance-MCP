@@ -66,12 +66,15 @@ import { registerGetCompanyProfile } from "./tools/getCompanyProfile.js";
 import { registerCompareStocks } from "./tools/compareStocks.js";
 import { registerGetSectorPerformance } from "./tools/getSectorPerformance.js";
 import { registerGetWatchlist } from "./tools/getWatchlist.js";
+import { registerGetCryptoMovers } from "./tools/getCryptoMovers.js";
+import { registerSaveWatchlist } from "./tools/saveWatchlist.js";
 import { registerFinancePrompts } from "./utils/financePrompts.js";
+import { loadWatchlist, watchlistPath } from "./utils/watchlistStore.js";
 
 async function main() {
   const server = new McpServer({
     name: "finans-mcp",
-    version: "1.5.0",
+    version: "1.6.0",
   });
 
   // Döviz & para birimi (Frankfurter / ECB)
@@ -147,9 +150,47 @@ async function main() {
   registerCompareStocks(server); // Çoklu hisse karşılaştırma tablosu
   registerGetSectorPerformance(server); // ABD sektör performans sıralaması
   registerGetWatchlist(server); // İzleme listesi anlık durum
+  registerSaveWatchlist(server); // Kalıcı izleme listesi kaydetme
+  registerGetCryptoMovers(server); // Kripto en çok yükselen/düşen
 
   // Araç kataloğu kaynağı (istemciler doğru aracı seçebilsin diye)
   registerToolCatalog(server);
+
+  // Kalıcı izleme listesi kaynağı (diske kaydedilen semboller)
+  server.registerResource(
+    "izleme-listesi",
+    "finans://watchlist",
+    {
+      title: "Finans-MCP İzleme Listesi",
+      description:
+        "save_watchlist ile diske kaydedilen sembol listesi. get_watchlist bu listeyi sembol vermeden okur.",
+      mimeType: "application/json",
+    },
+    async (uri) => {
+      const file = watchlistPath();
+      const wl = await loadWatchlist(file);
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: "application/json",
+            text: JSON.stringify(
+              {
+                file,
+                count: wl.symbols.length,
+                symbols: wl.symbols,
+                updatedAt: wl.updatedAt,
+                invalid: wl.invalid,
+                note: "Listeyi save_watchlist aracıyla güncelleyebilirsiniz.",
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
 
   // Hazır soru şablonları (prompt/list)
   registerFinancePrompts(server);
@@ -157,7 +198,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error("finans-mcp v1.5.0 — stdio üzerinde çalışıyor. (42 tool, 4 prompt aktif)");
+  console.error("finans-mcp v1.6.0 — stdio üzerinde çalışıyor. (44 tool, 4 prompt aktif)");
 }
 
 main().catch((error) => {

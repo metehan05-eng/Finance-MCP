@@ -3,6 +3,26 @@
 Tüm notable değişiklikler bu dosyada belgelenir.
 Format: [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) — sürümleme: [SemVer](https://semver.org/lang/tr/).
 
+## [1.6.0] — 2026-10-07
+
+### Eklenen
+- `get_crypto_movers`: CoinGecko ile 24 saat/7 gün en çok yükselen-düşen kriptolar, piyasa medyanı ve piyasa değeri filtresi (API key yok).
+- `save_watchlist`: Kalıcı izleme listesini diske kaydeder (`replace` / `add` / `remove` / `clear`); atomik yazma, maksimum 50 sembol, dosya izni 0600.
+- `get_watchlist` sembol verilmeden çağrıldığında kalıcı listeyi okur; `finans://watchlist` MCP resource'u kayıtlı listeye okuma erişimi verir.
+- `analyze_portfolio` için sektör/endüstri kırılımı: `bySector`, `byIndustry`, ağırlıklı beta (kapsama yüzdesi), sektör yoğunlaşması ve %40+ yoğunlaşma uyarısı (`includeBreakdown` ile kapatılabilir).
+
+### Geliştirilen
+- `get_bist_indices`: Sektör endeksleri (XBANK, XUTEK, XGMYO, XILTM, XUSIN) benchmark (XU100) bazında sıralanır; göreli performans, önde/geride olan sektör ve doğrulanmış kod listesi döner. Yahoo'da karşılığı olmayan kodlar (XU015, XU010, XMESM, XKAGIT) bilinçli olarak çıkarıldı.
+- `get_watchlist`: Büyük/küçük harf duyarsız tekilleştirme ve ilk yazımı koruma.
+- `get_company_profile`: `summaryLength: 0` artık özeti gerçekten gizler.
+
+### Düzeltmeler
+- `fetchWithRetry`: Hata yanıtları (4xx/5xx) artık önbelleğe yazılmaz; `cacheDelete` ile temizlenir.
+- Test kapsamı: DI tabanlı ağ yolu testleri (`get_watchlist`, `get_company_profile`, `compare_stocks`, `get_sector_performance`, `get_bist_indices`, `get_crypto_movers`) ve retry/429/5xx/devre kesici testleri eklendi; birim testi 150'ye çıktı.
+
+### Değişti
+- Sürüm: 1.6.0
+
 ## [1.5.0] — 2026-10-03
 
 ### Eklenen

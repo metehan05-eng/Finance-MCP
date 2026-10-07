@@ -57,6 +57,11 @@ export function cacheSet<T>(key: string, value: T, ttlSeconds: number): void {
   prune(now);
 }
 
+/** Tek bir anahtarı önbellekten siler (hatalı yanıtların saklanmaması için). */
+export function cacheDelete(key: string): void {
+  store.delete(key);
+}
+
 /** Tüm önbelleği temizler (get_data_health aracı ve testler için). */
 export function cacheClear(): void {
   store.clear();

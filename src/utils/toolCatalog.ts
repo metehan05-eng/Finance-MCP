@@ -116,10 +116,19 @@ export function registerToolCatalog(server: McpServer): void {
       examples: ["Bu ay hangi sektör öne çıktı?", "ABD sektörleri nasıl?"],
     },
     {
-      name: "get_watchlist",
+      name: "get_watchlist / save_watchlist",
       description:
-        "İzleme listesi anlık durumu: fiyat, günlük/52 haftalık değişim, en çok yükselen-düşen.",
-      examples: ["Takip listemi kontrol et", "THYAO, GARAN, BTC-USD durumu nedir?"],
+        "İzleme listesi: anlık durum, en çok yükselen-düşen. Sembol verilmeden çağrılırsa diske kaydedilmiş kalıcı liste okunur.",
+      examples: ["Takip listemi kontrol et", "THYAO, GARAN, BTC-USD listeme ekle"],
+    },
+    {
+      name: "get_crypto_movers",
+      description:
+        "Kripto piyasasının 24 saat veya 7 günlük en çok yükselen/düşen coinleri, piyasa medyanı.",
+      examples: [
+        "Bugün en çok yükselen coinler hangileri?",
+        "Kripto piyasasında en çok düşen 5 coin",
+      ],
     },
     {
       name: "prompts (MCP şablonları)",

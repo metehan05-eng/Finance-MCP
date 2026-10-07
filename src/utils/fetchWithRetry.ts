@@ -1,4 +1,4 @@
-import { cached } from "./cache.js";
+import { cached, cacheDelete } from "./cache.js";
 import { assertBreakerClosed, recordFailure, recordSuccess } from "./httpCircuit.js";
 
 /**
@@ -65,10 +65,12 @@ export async function fetchWithRetry(
     return fetchRaw(url, options, maxRetries);
   }
 
+  const cacheKey = `http:${url}`;
+
   // Aynı URL için eşzamanlı istekleri tekilleştirir, TTL boyunca önbellekten döner.
   // Gövde metin olarak saklanır ve her çağrıda YENİ bir Response üretilir:
   // aksi halde ikinci çağıran "Body has already been read" hatası alırdı.
-  const hit = await cached(`http:${url}`, ttlSeconds, async (): Promise<CachedBody> => {
+  const hit = await cached(cacheKey, ttlSeconds, async (): Promise<CachedBody> => {
     const response = await fetchRaw(url, options, maxRetries);
     return {
       status: response.status,
@@ -77,6 +79,10 @@ export async function fetchWithRetry(
       contentType: response.headers.get("content-type") ?? "text/plain; charset=utf-8",
     };
   });
+
+  // Hata yanıtları (4xx/5xx/rate limit) kalıcı olmamalı: kaynak toparlanınca
+  // bir sonraki çağrı veriyi taze denemeli.
+  if (hit.status >= 400) cacheDelete(cacheKey);
 
   return new Response(hit.body, {
     status: hit.status,

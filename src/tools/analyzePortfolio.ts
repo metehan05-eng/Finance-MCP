@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
-import { fetchQuotes, fetchQuote } from "../utils/yahoo.js";
+import { fetchQuotes, fetchQuote, fetchQuoteSummary } from "../utils/yahoo.js";
 import { round } from "../utils/financeMath.js";
 
 /** TRY → USD dönüşümünde kullanılan anlık kur (isteğin başında doldurulur). */
@@ -44,8 +44,14 @@ export function registerAnalyzePortfolio(server: McpServer) {
         .describe(
           "Risksiz oran (% yıllık). Varsayılan %30 (Türkiye mevduat/politika faizi yaklaşımı)"
         ),
+      includeBreakdown: z
+        .boolean()
+        .default(true)
+        .describe(
+          "Sektör/endüstri kırılımı, ağırlıklı beta ve yoğunlaşma uyarısı hesaplansın mı (sembol başına 1 ek istek)"
+        ),
     },
-    async ({ positions, riskFreeRatePct }) => {
+    async ({ positions, riskFreeRatePct, includeBreakdown }) => {
       try {
         const symbols = positions.map((p) => p.symbol.trim().toUpperCase());
         const quotes = await fetchQuotes(symbols);
@@ -133,6 +139,54 @@ export function registerAnalyzePortfolio(server: McpServer) {
           rich.map((p) => ({ key: p.exchange ?? "Diğer", value: toUsd(p) * p.quantity }))
         );
 
+        // Sektör / endüstri kırılımı ve ağırlıklı beta (summaryProfile + beta)
+        let breakdown: Record<string, unknown> | undefined;
+        if (includeBreakdown) {
+          const profiles = await Promise.all(
+            rich.map((p) =>
+              fetchQuoteSummary(p.symbol, ["summaryProfile", "summaryDetail"]).catch(
+                () => ({}) as Record<string, any>
+              )
+            )
+          );
+
+          const meta = rich.map((p, i) => {
+            const prof = profiles[i] ?? {};
+            return {
+              symbol: p.symbol,
+              valueUsd: toUsd(p) * p.quantity,
+              sector: (prof.summaryProfile?.sector as string | undefined) ?? null,
+              industry: (prof.summaryProfile?.industry as string | undefined) ?? null,
+              beta: typeof prof.summaryDetail?.beta === "number" ? prof.summaryDetail.beta : null,
+            };
+          });
+
+          const bySector = aggregate(
+            meta.map((m) => ({ key: m.sector ?? "Bilinmiyor", value: m.valueUsd }))
+          );
+          const byIndustry = aggregate(
+            meta.map((m) => ({ key: m.industry ?? "Bilinmiyor", value: m.valueUsd }))
+          );
+
+          breakdown = {
+            bySector,
+            byIndustry,
+            bySectorPct: toPercentMap(bySector),
+            weightedBeta: weightedBeta(
+              meta.map((m) => ({
+                value: m.valueUsd,
+                beta: m.beta,
+              }))
+            ),
+            betaCoveragePct: round(
+              (meta.filter((m) => m.beta !== null).reduce((a, m) => a + m.valueUsd, 0) / totalUsd) *
+                100
+            ),
+            concentration: concentration(bySector, totalUsd),
+            unknownSectorSymbols: meta.filter((m) => m.sector === null).map((m) => m.symbol),
+          };
+        }
+
         return {
           content: [
             {
@@ -158,7 +212,9 @@ export function registerAnalyzePortfolio(server: McpServer) {
                     positions: positionsDetail,
                     byCurrency,
                     byExchange,
+                    byCurrencyPct: toPercentMap(byCurrency),
                   },
+                  sectorBreakdown: breakdown ?? null,
                   source: "Yahoo Finance",
                   dataNote: "Yatırım tavsiyesi değildir.",
                 },
@@ -174,6 +230,56 @@ export function registerAnalyzePortfolio(server: McpServer) {
       }
     }
   );
+}
+
+/** Tutar dağılımını yüzdeye çevirir. */
+export function toPercentMap(amounts: Record<string, number>): Record<string, number> {
+  const total = Object.values(amounts).reduce((a, b) => a + b, 0);
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(amounts)) {
+    out[k] = total > 0 ? (round((v / total) * 100) ?? 0) : 0;
+  }
+  return out;
+}
+
+/** Portföyün ağırlıklı betası (beta yoksa ağırlığı dışarıda bırakılır). */
+export function weightedBeta(
+  entries: Array<{ value: number; beta: number | null }>
+): number | null {
+  const known = entries.filter((e) => e.beta !== null) as Array<{ value: number; beta: number }>;
+  const covered = known.reduce((a, e) => a + e.value, 0);
+  if (covered <= 0) return null;
+  // Bilinen betalar kendi normalize ağırlığıyla ortalanır (kapsama payı ayrıca bildirilir)
+  const w = known.reduce((a, e) => a + (e.beta as number) * (e.value / covered), 0);
+  return round(w, 3);
+}
+
+/** Sektör yoğunlaşması: en büyük sektör payı ve uyarı. */
+export function concentration(
+  bySector: Record<string, number>,
+  total: number
+): {
+  topSector: string | null;
+  topSectorPct: number | null;
+  sectorCount: number;
+  warning: string | null;
+} {
+  const entries = Object.entries(bySector).sort((a, b) => b[1] - a[1]);
+  const top = entries[0];
+  const topPct = top && total > 0 ? round((top[1] / total) * 100) : null;
+  let warning: string | null = null;
+  if (entries.length === 1) {
+    warning =
+      "Portföy tek bir sektörden oluşuyor; çeşitlendirme yok, sektör riski tüm portföyü etkiler.";
+  } else if (topPct !== null && topPct >= 40) {
+    warning = `${top![0]} sektörü portföyün %${topPct}'ini oluşturuyor (eşik %40): yoğunlaşma riski.`;
+  }
+  return {
+    topSector: top?.[0] ?? null,
+    topSectorPct: topPct,
+    sectorCount: entries.length,
+    warning,
+  };
 }
 
 function aggregate(items: Array<{ key: string; value: number }>): Record<string, number> {

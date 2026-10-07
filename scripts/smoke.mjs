@@ -12,6 +12,9 @@
 //   node scripts/smoke.mjs --strict   # tüm vakalar zorunlu
 //   node scripts/smoke.mjs --only=get_dividend_history,get_analyst_consensus
 import { spawn } from "node:child_process";
+import { rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -54,6 +57,18 @@ const CASES = [
   { name: "get_policy_rate", args: { history: 3 }, critical: false },
   { name: "get_economic_calendar", args: { range: "thisweek" }, critical: false },
   { name: "get_data_health", args: { only: ["yahoo_finance", "coingecko"] }, critical: false },
+  { name: "get_bist_indices", args: { indices: ["XU100", "XBANK", "XUTEK"] }, critical: false },
+  {
+    name: "get_crypto_movers",
+    args: { window: "24h", limit: 5, minMarketCapUsd: 1000000000 },
+    critical: false,
+  },
+  {
+    name: "save_watchlist",
+    args: { symbols: ["THYAO", "AAPL"], mode: "replace" },
+    critical: false,
+  },
+  { name: "get_watchlist", args: {}, critical: false }, // kalıcı liste okuma yolu
 ];
 
 const selected = only ? CASES.filter((c) => only.includes(c.name)) : CASES;
@@ -69,7 +84,21 @@ if (!existsSync(serverPath)) {
   process.exit(2);
 }
 
-const proc = spawn("node", [serverPath], { stdio: ["pipe", "pipe", "inherit"] });
+// Smoke izleme listesi geçici dosyada tutulur ki kullanıcı gerçek listesine dokunulmasın.
+const watchlistTmp = join(tmpdir(), `finans-smoke-watchlist-${process.pid}.json`);
+// Geçici liste her koşu sonunda temizlenir.
+process.on("exit", () => {
+  try {
+    rmSync(watchlistTmp, { force: true });
+  } catch {
+    /* temizlik hatası koşuyu düşürmemeli */
+  }
+});
+
+const proc = spawn("node", [serverPath], {
+  stdio: ["pipe", "pipe", "inherit"],
+  env: { ...process.env, FINANS_WATCHLIST_PATH: watchlistTmp },
+});
 
 let handshakeDone = false;
 proc.on("exit", (code) => {

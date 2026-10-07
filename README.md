@@ -8,7 +8,7 @@ Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açı
 
 ---
 
-## 🚀 Sunulan Araçlar (42 Araç)
+## 🚀 Sunulan Araçlar (44 Araç)
 
 ### Döviz & Para Birimi
 | Araç | Açıklama | Kaynak |
@@ -25,7 +25,7 @@ Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açı
 | `get_global_stock_price` | Dünyadaki tüm hisseler (AAPL, NVDA, TSLA), endeksler (S&P 500, NASDAQ) ve ETF'ler | Yahoo Finance |
 | `get_stock_history` | Bir hissenin geçmiş OHLC (grafik) verisi — teknik analiz için (`THYAO.IS`, `AAPL`, `NVDA`) | Yahoo Finance |
 | `search_symbol` | İsme göre sembol (ticker) arama — `"ASELSAN"` → `ASELS.IS` | Yahoo Finance |
-| `get_bist_indices` | BIST endekslerinin güncel değeri/değişimi (`XU100`, `XU030`, `XBANK`...) | Yahoo Finance |
+| `get_bist_indices` | BIST endeksleri + sektör kırılımı: sektörler benchmark (XU100) bazında sıralanır (`XBANK`, `XUTEK`, `XGMYO`, `XILTM`, `XUSIN`) | Yahoo Finance |
 
 ### Kripto Para
 | Araç | Açıklama | Kaynak |
@@ -33,6 +33,7 @@ Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açı
 | `get_crypto_price` | Kripto paraların seçilen para birimi cinsinden güncel fiyatı, piyasa değeri ve 24s hacmi | CoinGecko |
 | `get_multi_crypto_price` | Birden fazla kripto paranın fiyatını tek sorguda getirme | CoinGecko |
 | `get_crypto_history` | Kripto geçmiş OHLC verisi (USD veya TRY) — `bitcoin`, `ethereum`, `solana` | Yahoo Finance |
+| `get_crypto_movers` | 24 saat / 7 gün en çok yükselen ve düşen coinler, piyasa medyanı, piyasa değeri filtresi | CoinGecko |
 
 ### Emtia
 | Araç | Açıklama | Kaynak |
@@ -52,7 +53,7 @@ Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açı
 | :--- | :--- | :--- |
 | `get_fundamentals` | F/K, EPS, PD/DD, temettü verimi, marjlar, beta, analist hedefleri | Yahoo Finance |
 | `get_correlation` | İki varlık arasındaki fiyat/getiri korelasyonu + yıllık getiri & volatilite | Yahoo Finance |
-| `analyze_portfolio` | Portföy değeri, günlük değişim, ağırlıklar, risk/Sharp tahmini, para birimi dağılımı | Yahoo Finance |
+| `analyze_portfolio` | Portföy değeri, günlük değişim, ağırlıklar, risk/Sharp tahmini, para birimi dağılımı + **sektör/endüstri kırılımı, ağırlıklı beta ve yoğunlaşma uyarısı** | Yahoo Finance |
 
 ### BIST'e Özel
 | Araç | Açıklama | Kaynak |
@@ -101,14 +102,15 @@ Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açı
 | `get_company_profile` | Şirket profili: sektör, sanayi, ülke, çalışan sayısı, web sitesi, iş özeti | Yahoo Finance |
 | `compare_stocks` | 2-8 hisseyi fiyat, piyasa değeri, F/K, F/DD, ROE, temettü verimi, 52 hafta, beta ile karşılaştırır | Yahoo Finance |
 | `get_sector_performance` | 11 ABD sektör ETF'i ile dönem getirisi sıralaması, en güçlü/zayıf sektör | Yahoo Finance |
-| `get_watchlist` | 20 sembole kadar izleme listesi: anlık durum, en çok yükselen/düşen | Yahoo Finance |
+| `get_watchlist` | 20 sembole kadar izleme listesi: anlık durum, en çok yükselen/düşen. `symbols` verilmezse **kalıcı** listeyi okur | Yahoo Finance |
+| `save_watchlist` | İzleme listesini `~/.finans-mcp/watchlist.json` dosyasına kaydeder (`replace` / `add` / `remove` / `clear`) | Yerel dosya |
 
 ### Sistem
 | Araç | Açıklama | Kaynak |
 | :--- | :--- | :--- |
 | `get_data_health` | Tüm veri kaynaklarının erişilebilirliği, yanıt süresi, önbellek ve devre kesici durumu (teşhis) | Çoklu kaynak |
 
-> 📚 İstemciler `finans://tools/catalog` kaynağını okuyarak araç kataloğunu ve örnek soruları görebilir.
+> 📚 İstemciler `finans://tools/catalog` kaynağını okuyarak araç kataloğunu ve örnek soruları görebilir; `finans://watchlist` kaynağı ise `save_watchlist` ile kaydedilmiş kalıcı izleme listesini döndürür.
 >
 > 🧩 **Hazır soru şablonları** (`prompts/list`): `market_morning_brief` (sabah brifingi), `stock_deep_dive` (hisse derinlemesine analiz), `portfolio_review` (portföy değerlendirme), `data_source_diagnosis` (kaynak teşhisi).
 
@@ -189,14 +191,49 @@ Dosyanın içine şu bloğu ekleyin (dosya yolunu kendi sisteminize göre günce
 }
 ```
 
-Claude Desktop uygulamasını yeniden başlatın. Sağ altta çekiç (Tools) simgesinde **25 tool** aktif olarak görünecektir.
+Claude Desktop uygulamasını yeniden başlatın. Sağ altta çekiç (Tools) simgesinde **44 tool** aktif olarak görünecektir.
 
 ---
 
-## 💻 Claude Code (CLI) ile Bağlama
+## 💻 Claude Code ile Bağlama
+
+### Yol 1 — Proje yapılandırması ile (önerilen, otomatik)
+
+Depo kökünde `scripts/claude-mcp.mjs` başlatıcısı ve Claude Code'a özel `.mcp.json` bulunur:
+
+```json
+{
+  "mcpServers": {
+    "finans-mcp": {
+      "command": "node",
+      "args": ["${CLAUDE_PROJECT_DIR:-.}/scripts/claude-mcp.mjs"],
+      "timeout": 60000
+    }
+  }
+}
+```
+
+1. `npm install && npm run build` (ilk seferde).
+2. Depo kökünde `claude` çalıştırın ve ilk açılışta çıkan **onay** isteminde `finans-mcp` sunucusunu onaylayın.
+3. `/mcp` panelinde `finans-mcp · 44 tools` bağlı görmelisiniz.
+
+Başlatıcı `build/index.js` yoksa otomatik `npm run build` çalıştırır, sunucuyu çocuklar süreç olarak başlatır ve sinyalleri iletir. Onayı sıfırlamak için: `claude mcp reset-project-choices`.
+
+### Yol 2 — Manuel ekleme (kişisel/kullanıcı kapsamı)
 
 ```bash
-claude mcp add finance-mcp -- node /mutlak/dosya/yolu/Finance-MCP/build/index.js
+# Tüm projelerde (user scope)
+claude mcp add finance-mcp -s user -- node /mutlak/dosya/yolu/Finance-MCP/scripts/claude-mcp.mjs
+
+# Sadece bu proje için (local scope)
+claude mcp add finance-mcp -- node /mutlak/dosya/yolu/Finance-MCP/scripts/claude-mcp.mjs
+```
+
+Durumu kontrol etmek için:
+
+```bash
+claude mcp list        # bağlantı durumu
+claude mcp get finance-mcp
 ```
 
 ---
@@ -242,8 +279,8 @@ npm run inspector     # MCP Inspector ile araçları tarayıcıda görsel test e
 ```
 
 **Test & Kalite:**
-- `src/**/*.test.ts` altında ağ çağrısı yapmayan birim testleri bulunur (78 test): indikatörler, istatistik, Türkçe sayı ayrıştırma, cache/retry mantığı ve araçların saf yardımcı fonksiyonları.
-- `scripts/smoke.mjs` sunucuyu gerçekten başlatıp 12 aracı canlı kaynaklardan çağırır.
+- `src/**/*.test.ts` altında **175 birim test** bulunur: indikatörler, istatistik, Türkçe sayı ayrıştırma, cache/retry/devre kesici mantığı, depolama katmanı ve sahte bağımlılıklarla (DI) araç ağ yolları.
+- `scripts/smoke.mjs` sunucuyu gerçekten başlatıp 22 vakayı canlı kaynaklardan çağırır (toplu hata eşiği: %40; tek kaynak hatası uyarı olarak işaretlenir).
 - GitHub Actions: `ci.yml` her push/PR'da lint + format + derleme + test; `smoke.yml` main'e push'ta ve haftalık canlı test; `release.yml` `v*` etiketinde npm + GitHub release.
 
 **Dayanıklılık:** Tüm kaynak çağrıları kaynak bazlı TTL'li bellek içi önbellekten geçer (kurlar 60 sn, makro 30 dk) ve ağ hatalarında jitter'lı üstel geri çekilmeyle 3 kez yeniden denenir. Sürekli hata veren bir kaynak için **devre kesici** devreye girer ve 45 sn boyunca anında bilgilendirici hata döner — böylece engellenmiş bir kaynağa istek atmak zaman kaybı yaratmaz. Durumu `get_data_health` ile görebilirsiniz.
