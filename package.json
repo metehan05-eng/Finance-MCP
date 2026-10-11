@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "fast-xml-parser": "^4.4.1",
+    "fast-xml-parser": "^5.11.2",
     "yahoo-finance2": "^4.0.3",
     "zod": "^3.23.8"
   },
