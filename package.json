@@ -39,7 +39,14 @@
     "claude"
   ],
   "author": "metehan05-eng",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metehan05-eng/Finance-MCP.git"
+  },
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "fast-xml-parser": "^4.4.1",
