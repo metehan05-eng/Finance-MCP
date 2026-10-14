@@ -69,21 +69,38 @@ export function annualizedVolatility(dailyReturns: number[]): number {
 }
 
 /**
- * Türkçe sayı formatını (örn. "1,650,074" veya "16382,0000") sayıya çevirir.
+ * Metindeki sayıyı çözer. Türkçe (1.234,56) ve İngilizce (1,234.56) biçimler
+ * desteklenir; hangi ayracın ondalık olduğu son görülen ayraca göre belirlenir.
+ * Aynı ayraç birden fazla görünüyorsa binlik ayraç kabul edilir (1.650.074,
+ * 1,650,074 → 1650074). Örnek: "16382,0000" → 16382.
  */
 export function parseTrNumber(s: string | null | undefined): number | null {
   if (s === null || s === undefined || s.trim() === "" || s.trim() === "-") return null;
   const cleaned = s.replace(/[^\d,.-]/g, "").trim();
-  if (!cleaned) return null;
+  if (!cleaned || !/\d/.test(cleaned)) return null;
+
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
   let normalized = cleaned;
-  if (normalized.includes(",") && normalized.includes(".")) {
-    // bindelik ayracı "." veya "," olabilir; sonuncu virgül ondalıktır
-    normalized = normalized.replace(/\./g, "").replace(",", ".");
-  } else if (normalized.includes(",")) {
-    normalized = normalized.replace(",", ".");
+
+  if (lastComma !== -1 && lastDot !== -1) {
+    if (lastComma > lastDot) {
+      // 1.234,56 → virgül ondalık, nokta binlik
+      normalized = cleaned.replace(/\./g, "").replace(",", ".");
+    } else {
+      // 1,234.56 → nokta ondalık, virgül binlik
+      normalized = cleaned.replace(/,/g, "");
+    }
+  } else if (lastComma !== -1) {
+    normalized =
+      cleaned.split(",").length > 2 ? cleaned.replace(/,/g, "") : cleaned.replace(",", ".");
+  } else if (lastDot !== -1) {
+    // birden fazla nokta kesin binlik; tek nokta olduğu gibi bırakılır (ondalık)
+    if (cleaned.split(".").length > 2) normalized = cleaned.replace(/\./g, "");
   }
+
   const n = parseFloat(normalized);
-  return isNaN(n) ? null : n;
+  return Number.isFinite(n) ? n : null;
 }
 
 export function round(n: number | null | undefined, digits = 2): number | null {

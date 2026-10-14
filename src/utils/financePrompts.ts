@@ -31,8 +31,8 @@ export function registerFinancePrompts(server: McpServer) {
               `Bugünün piyasa brifingini hazırla (${focus ?? "genel"} odaklı).\n\n` +
               "Şu sırayla ilerle:\n" +
               "1. get_tcmb_snapshot — Türkiye makro görünümü (politika faizi, enflasyon)\n" +
-              "2. get_bist_price — BIST 100 endeksi günlük değişim\n" +
-              "3. get_global_market_summary — global piyasa özeti\n" +
+              "2. get_bist_indices — BIST 100 endeksi günlük değişim\n" +
+              "3. get_market_summary — global piyasa özeti\n" +
               "4. get_sector_performance (period=5d) — hangi sektörler öne çıkıyor\n" +
               "5. get_market_movers — en çok yükselen/düşenler\n\n" +
               "Çıktı formatı: 5 satırlık madde işaretli özet + tek cümlelik 'bugünün riski'. " +
@@ -62,7 +62,7 @@ export function registerFinancePrompts(server: McpServer) {
               `${symbol} hissesini derinlemesine analiz et.\n\n` +
               "Şu araçları kullan:\n" +
               "1. get_company_profile — şirket ne iş yapıyor, hangi sektörde\n" +
-              "2. get_stock_price + get_technical_indicators (period=1y) — fiyat ve teknik durum\n" +
+              "2. get_global_stock_price (BIST için get_bist_price) + get_technical_indicators (period=1y) — fiyat ve teknik durum\n" +
               "3. get_dividend_history — temettü verimi ve süreklilik\n" +
               "4. get_earnings_info — yaklaşan bilanço ve beklentiler\n" +
               "5. get_analyst_consensus — analist tavsiyesi ve hedef fiyat\n" +

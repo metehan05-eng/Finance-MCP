@@ -81,6 +81,21 @@ test("cached: hata durumunda sonraki çağrıyı engellemez", async () => {
   cacheClear();
 });
 
+test("cached: null sonucu da önbelleğe alır (yeniden hesaplanmaz)", async () => {
+  cacheClear();
+  let calls = 0;
+  const fn = async () => {
+    calls++;
+    return null;
+  };
+  const first = await cached<string | null>("bos", 60, fn);
+  const second = await cached<string | null>("bos", 60, fn);
+  assert.equal(first, null);
+  assert.equal(second, null);
+  assert.equal(calls, 1, "null sonuç önbellekte bulunmalı, işlev tekrar çalışmamalı");
+  cacheClear();
+});
+
 test("isRetryableError: ağ hataları yeniden denenebilir, mantık hataları değil", () => {
   assert.equal(isRetryableError(new Error("ETIMEDOUT")), true);
   assert.equal(isRetryableError(new Error("fetch failed")), true);

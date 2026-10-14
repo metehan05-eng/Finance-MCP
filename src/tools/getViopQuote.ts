@@ -72,6 +72,7 @@ export function registerGetViopQuote(server: McpServer) {
         .default(20)
         .describe("Döndürülecek maksimum kontrat sayısı"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ search, limit }) => {
       try {
         const resp = await fetchWithRetry(VIOP_URL, {

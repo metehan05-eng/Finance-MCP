@@ -2,9 +2,7 @@
   "mcpServers": {
     "finans-mcp": {
       "command": "node",
-      "args": [
-        "/home/spectre05/İndirilenler/finans-mcp/build/index.js"
-      ]
+      "args": ["${workspaceFolder}/build/index.js"]
     }
   }
 }

@@ -94,6 +94,7 @@ export function registerGetMacroIndicators(server: McpServer) {
         .default(5)
         .describe("Geriye dönük kaç yıl gösterilsin (Dünya Bankası yıllık veridir)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ country, years }) => {
       const iso = country.toUpperCase();
       const endYear = new Date().getFullYear();

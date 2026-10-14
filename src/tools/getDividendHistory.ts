@@ -65,6 +65,7 @@ export function registerGetDividendHistory(server: McpServer) {
         .default(false)
         .describe("Pay biçiminde bölünme (split) kayıtları da dahil edilsin mi"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ symbol, years, includeSplits }) => {
       try {
         const upper = symbol.trim().toUpperCase();

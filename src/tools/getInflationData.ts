@@ -42,6 +42,7 @@ export function registerGetInflationData(server: McpServer) {
         .default(12)
         .describe("Kaç yıllık veri döndürülsün (1-40, default: 12)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ periods }) => {
       const endYear = new Date().getFullYear();
       const startYear = endYear - (periods - 1);

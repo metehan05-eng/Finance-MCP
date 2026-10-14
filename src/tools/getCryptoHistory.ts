@@ -102,6 +102,7 @@ export function registerGetCryptoHistory(server: McpServer) {
         .default(250)
         .describe("Döndürülecek maksimum veri noktası"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ coin, vsCurrency, period, limit }) => {
       const input = coin.trim().toLowerCase();
 

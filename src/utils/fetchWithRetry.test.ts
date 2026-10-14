@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveTtl, fetchWithRetry } from "./fetchWithRetry.js";
+import { resolveTtl, fetchWithRetry, retryDelayMs } from "./fetchWithRetry.js";
 import { breakerReset, breakerStatus, isBreakerOpen } from "./httpCircuit.js";
 import { cacheClear } from "./cache.js";
 
@@ -272,4 +272,58 @@ test("önbellekten dönen yanıtın durum kodu ve içerik tipi korunur", async (
   assert.equal(second.headers.get("content-type"), "text/html; charset=utf-8");
   assert.equal(await second.text(), "<html>x</html>");
   assert.equal(calls.length, 1);
+});
+
+test("Retry-After saniye değeri ve üst sınır doğru çevrilir", () => {
+  assert.equal(retryDelayMs("2", 1), 2000);
+  assert.equal(retryDelayMs("0", 3), 0);
+  assert.equal(retryDelayMs("120", 1), 30_000, "üst sınır 30 sn");
+});
+
+test("Retry-After HTTP-tarih biçimi desteklenir", () => {
+  const future = new Date(Date.now() + 3000).toUTCString();
+  const ms = retryDelayMs(future, 1);
+  assert.ok(ms > 0 && ms <= 30_000);
+});
+
+test("Retry-After geçersizse denemeye göre varsayılan bekleme", () => {
+  assert.equal(retryDelayMs("yakında", 2), 3000);
+  assert.equal(retryDelayMs(null, 1), 1500);
+});
+
+test("son denemesi 429 ile biten istek devre sayacını artırır", async () => {
+  breakerReset();
+  cacheClear();
+  const { impl } = fakeFetch([() => new Response("busy", { status: 429 })]);
+
+  await withFetch(impl, () => fetchWithRetry("https://429-breaker.example.com/x", {}, 1));
+
+  assert.equal(breakerStatus("429-breaker.example.com").failures, 1, "son 429 hata sayılır");
+});
+
+test("önce 429 sonra 200: devre sayacı artmaz", async () => {
+  breakerReset();
+  cacheClear();
+  const { impl } = fakeFetch([
+    () => new Response("busy", { status: 429, headers: { "Retry-After": "0" } }),
+    () => new Response("ok", { status: 200 }),
+  ]);
+
+  await withFetch(impl, () => fetchWithRetry("https://429-ok.example.com/x", {}, 3));
+
+  assert.equal(breakerStatus("429-ok.example.com").failures, 0);
+});
+
+test("ağ hatası devre sayacını deneme başına değil istek başına artırır", async () => {
+  breakerReset();
+  cacheClear();
+  const impl = (async () => {
+    throw new Error("boom");
+  }) as unknown as typeof fetch;
+
+  await withFetch(impl, () => fetchWithRetry("https://once.example.com/x", {}, 3)).catch(
+    () => undefined
+  );
+
+  assert.equal(breakerStatus("once.example.com").failures, 1, "3 deneme = 1 hata");
 });

@@ -37,6 +37,7 @@ export function registerGetCorrelation(server: McpServer) {
         .default("1d")
         .describe("Getiri periyodu: günlük, haftalık veya aylık"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ symbolA, symbolB, period, interval }) => {
       const a = symbolA.trim().toUpperCase();
       const b = symbolB.trim().toUpperCase();

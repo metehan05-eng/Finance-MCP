@@ -21,6 +21,7 @@ export function registerGetCryptoFearGreed(server: McpServer) {
         .default(30)
         .describe("Kaç günlük geçmiş gösterilsin (max 30)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ history }) => {
       try {
         const response = await fetchWithRetry(FNG_URL, {

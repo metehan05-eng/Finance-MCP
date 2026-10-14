@@ -23,6 +23,7 @@ export function registerSearchSymbol(server: McpServer) {
         .default(8)
         .describe("Döndürülecek sonuç sayısı (default: 8)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ query, limit }) => {
       try {
         const results = await searchSymbols(query, limit);

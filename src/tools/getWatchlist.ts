@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
 import { resolveTickers, fetchQuote } from "../utils/yahoo.js";
 import { round } from "../utils/financeMath.js";
-import { loadWatchlist, watchlistPath } from "../utils/watchlistStore.js";
+import { loadWatchlist, watchlistPath, MAX_WATCHLIST_SYMBOLS } from "../utils/watchlistStore.js";
 
 export interface WatchItem {
   symbol: string;
@@ -73,7 +73,7 @@ export function registerGetWatchlist(
       symbols: z
         .array(z.string().min(1))
         .min(1)
-        .max(20)
+        .max(MAX_WATCHLIST_SYMBOLS)
         .optional()
         .describe(
           "Sembol listesi (örn: ['THYAO', 'GARAN', 'AAPL', 'BTC-USD', 'XU100', 'USD/TRY']). Verilmezse save_watchlist ile kaydedilmiş kalıcı liste okunur."

@@ -74,7 +74,7 @@ import { loadWatchlist, watchlistPath } from "./utils/watchlistStore.js";
 async function main() {
   const server = new McpServer({
     name: "finans-mcp",
-    version: "1.6.0",
+    version: "1.6.1",
   });
 
   // Döviz & para birimi (Frankfurter / ECB)
@@ -198,7 +198,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error("finans-mcp v1.6.0 — stdio üzerinde çalışıyor. (44 tool, 4 prompt aktif)");
+  console.error("finans-mcp v1.6.1 — stdio üzerinde çalışıyor. (44 tool, 4 prompt aktif)");
 }
 
 main().catch((error) => {

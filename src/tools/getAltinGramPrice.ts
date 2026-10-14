@@ -22,6 +22,7 @@ export function registerGetAltinGramPrice(server: McpServer) {
         .default("24")
         .describe("Hangi ayar için gram fiyatı (24 = saf altın, 22 = ziynet altını)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ karat }) => {
       try {
         const quotes = await fetchQuotes(["GC=F", "USDTRY=X"]);

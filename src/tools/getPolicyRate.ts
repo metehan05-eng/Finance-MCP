@@ -75,6 +75,7 @@ export function registerGetPolicyRate(server: McpServer) {
         .default(20)
         .describe("Geriye dönük kaç faiz değişikliği gösterilsin (max 58)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ history }) => {
       try {
         const changes = await fetchPolicyRateHistory();

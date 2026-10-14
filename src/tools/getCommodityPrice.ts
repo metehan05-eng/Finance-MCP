@@ -68,6 +68,7 @@ export function registerGetCommodityPrice(server: McpServer) {
           "Emtia adı (altin, gumus, brent, petrol, dogalgaz, bakir, platin, paladyum...) veya doğrudan Yahoo sembolü (GC=F, SI=F, CL=F, BZ=F, NG=F, HG=F)"
         ),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ commodity }) => {
       const key = commodity.trim().toLowerCase().replace(/ı/g, "i").replace(/\s+/g, "");
       const symbol = COMMODITY_SYMBOLS[key] ?? commodity.trim().toUpperCase();

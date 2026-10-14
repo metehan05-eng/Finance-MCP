@@ -98,6 +98,7 @@ export function registerGetCryptoMovers(server: McpServer, deps: MoverDeps = DEF
           "Minimum piyasa kapitalizasyonu (USD). 0 = filtre yok. Örn. 1000000000 (1 milyar $) ile yalnızca büyük coinler"
         ),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ window, limit, minMarketCapUsd }) => {
       const key = window === "7d" ? "change7dPct" : "change24hPct";
       try {

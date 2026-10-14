@@ -12,6 +12,7 @@ export function registerGetBistPrice(server: McpServer) {
         .min(1)
         .describe("BIST hisse kodu, ör. THYAO, GARAN, ASELS, SASA, BIMAS (sonuna .IS eklemeyin)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ symbol }) => {
       const ticker = symbol.toUpperCase().replace(/\.IS$/i, "");
       const query = `${ticker}.IS`;

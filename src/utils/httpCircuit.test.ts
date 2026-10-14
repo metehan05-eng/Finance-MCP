@@ -108,3 +108,21 @@ test("reset tüm devreleri temizler", () => {
   breakerReset();
   assert.equal(breakerSnapshot().length, 0);
 });
+
+test("soğuma sonrası başarısız deneme devreyi yeniden açar (markProbing olmadan)", () => {
+  breakerReset();
+  const host = "reopen.example.com";
+  const t0 = 5_000_000;
+  for (let i = 0; i < DEFAULT_BREAKER.failureThreshold; i++) recordFailure(host, t0);
+  assert.equal(isBreakerOpen(host, t0), true);
+
+  const t1 = t0 + DEFAULT_BREAKER.cooldownMs + 1;
+  // Soğuma doldu → istek geçmeli (assertBreakerClosed hata fırlatmaz)
+  assert.doesNotThrow(() => assertBreakerClosed(host, t1));
+  assert.equal(isBreakerOpen(host, t1), false);
+
+  // Deneme başarısız → devre ANINDA yeniden açılır; soğuma t1'den itibaren yeniden başlar
+  recordFailure(host, t1);
+  assert.equal(isBreakerOpen(host, t1 + 1), true, "devre yeniden açılmalı");
+  assert.equal(breakerStatus(host, t1 + 1).retryInMs, DEFAULT_BREAKER.cooldownMs - 1);
+});

@@ -22,6 +22,7 @@ export function registerGetTcmbSnapshot(server: McpServer) {
     "get_tcmb_snapshot",
     "Türkiye ekonomik göstergelerinin anlık özetini döndürür: ana döviz kurları (USD/TRY, EUR/TRY, GBP/TRY, CHF/TRY, EUR/USD), TCMB politika faizi, ABD 10 yıl tahvil faizi ve gram altın fiyatı. Hızlı 'Türkiye nasıl gidiyor' özeti için.",
     {},
+    { readOnlyHint: true, openWorldHint: true },
     async () => {
       try {
         // Kur + altın + tahvil: tek toplu kotasyon (hata olursa bölüm bölüm dene)

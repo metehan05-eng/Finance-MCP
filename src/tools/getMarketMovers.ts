@@ -41,6 +41,7 @@ export function registerGetMarketMovers(server: McpServer) {
       region: z.string().length(2).default("US").describe("Bölge kodu (US, GB, DE, TR vb.)"),
       count: z.number().int().min(1).max(50).default(10).describe("Döndürülecek hisse sayısı"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ screen, region, count }) => {
       try {
         const yf = await getYahoo();

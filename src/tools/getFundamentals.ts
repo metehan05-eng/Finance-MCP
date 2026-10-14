@@ -34,6 +34,7 @@ export function registerGetFundamentals(server: McpServer) {
           "Sembol. BIST için koda '.IS' ekleyin: 'THYAO.IS', 'ASELS.IS'. Küresel: 'AAPL', 'NVDA'."
         ),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ symbol }) => {
       const ticker = symbol.trim().toUpperCase();
 

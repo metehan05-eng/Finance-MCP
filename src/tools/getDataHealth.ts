@@ -43,6 +43,7 @@ export function registerGetDataHealth(server: McpServer) {
         .optional()
         .describe("Yalnızca belirli kaynakları test et (örn. ['yahoo_finance','tcmb'])"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ only }) => {
       try {
         const probes: Probe[] = [

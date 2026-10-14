@@ -16,6 +16,7 @@ export function registerGetHistoricalRate(server: McpServer) {
         .regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalı")
         .describe("Kur bilgisi istenilen tarih (YYYY-MM-DD). 1999-01-04'ten itibaren desteklenir."),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ from, to, date }) => {
       const fromCode = from.toUpperCase();
       const toCode = to.toUpperCase();

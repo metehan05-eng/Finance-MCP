@@ -13,6 +13,7 @@ export function registerConvertCurrency(server: McpServer) {
       from: z.string().length(3).describe("Kaynak para birimi kodu, ör. USD"),
       to: z.string().length(3).describe("Hedef para birimi kodu, ör. TRY"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ amount, from, to }) => {
       const fromCode = from.toUpperCase();
       const toCode = to.toUpperCase();

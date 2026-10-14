@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { toPercentMap, weightedBeta, concentration } from "./analyzePortfolio.js";
+import {
+  toPercentMap,
+  weightedBeta,
+  concentration,
+  registerAnalyzePortfolio,
+  type PortfolioDeps,
+} from "./analyzePortfolio.js";
 
 test("tutar dağılımı yüzdeye çevrilir", () => {
   assert.deepEqual(toPercentMap({ TRY: 75, USD: 25 }), { TRY: 75, USD: 25 });
@@ -86,4 +92,81 @@ test("Bilinmiyor sektör tek başına kırılımı bozmaz", () => {
   const c = concentration({ Bilinmiyor: 100 }, 100);
   assert.equal(c.sectorCount, 1);
   assert.equal(c.topSector, "Bilinmiyor");
+});
+
+// --- Ağ yolu testleri (sahte bağımlılıklarla) ---
+
+function fakeServer() {
+  const registered = new Map<string, (args: any) => Promise<any>>();
+  const server = {
+    tool(name: string, ...rest: unknown[]) {
+      registered.set(name, rest[rest.length - 1] as (args: any) => Promise<any>);
+      return { name };
+    },
+  };
+  return { server: server as any, registered };
+}
+
+test("getiri yalnızca maliyeti bilinen pozisyonlar üzerinden hesaplanır", async () => {
+  const { server, registered } = fakeServer();
+  const deps: PortfolioDeps = {
+    fetchQuotes: (async (symbols: string[]) =>
+      symbols.map((s) =>
+        s === "AAPL"
+          ? {
+              symbol: "AAPL",
+              regularMarketPrice: 100,
+              regularMarketPreviousClose: 95,
+              currency: "USD",
+            }
+          : {
+              symbol: "MSFT",
+              regularMarketPrice: 200,
+              regularMarketPreviousClose: 190,
+              currency: "USD",
+            }
+      )) as any,
+    fetchQuote: (async () => undefined) as any,
+    fetchQuoteSummary: (async () => ({})) as any,
+  };
+  registerAnalyzePortfolio(server, deps);
+
+  const out = await registered.get("analyze_portfolio")!({
+    positions: [
+      { symbol: "AAPL", quantity: 10, cost: 80 },
+      { symbol: "MSFT", quantity: 5 },
+    ],
+    riskFreeRatePct: 30,
+    includeBreakdown: false,
+  });
+  const data = JSON.parse(out.content[0].text);
+
+  // Toplam değer: 10*100 + 5*200 = 2000
+  assert.equal(data.portfolioValueUsd, 2000);
+  // Maliyet yalnızca AAPL: 10*80 = 800 → kâr yalnızca AAPL üzerinden: 1000 - 800 = 200
+  assert.equal(data.totalCostUsd, 800);
+  assert.equal(data.unrealizedGainUsd, 200, "maliyetsiz pozisyon kâra eklenmemeli");
+  assert.equal(data.unrealizedGainPct, 25);
+});
+
+test("maliyet verilmezse getiri alanları null olur", async () => {
+  const { server, registered } = fakeServer();
+  const deps: PortfolioDeps = {
+    fetchQuotes: (async () => [
+      { symbol: "AAPL", regularMarketPrice: 100, regularMarketPreviousClose: 99, currency: "USD" },
+    ]) as any,
+    fetchQuote: (async () => undefined) as any,
+    fetchQuoteSummary: (async () => ({})) as any,
+  };
+  registerAnalyzePortfolio(server, deps);
+
+  const out = await registered.get("analyze_portfolio")!({
+    positions: [{ symbol: "AAPL", quantity: 10 }],
+    includeBreakdown: false,
+  });
+  const data = JSON.parse(out.content[0].text);
+
+  assert.equal(data.totalCostUsd, null);
+  assert.equal(data.unrealizedGainUsd, null);
+  assert.equal(data.unrealizedGainPct, null);
 });

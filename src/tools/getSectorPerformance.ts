@@ -26,11 +26,19 @@ export interface SectorPerf {
   bars: number;
 }
 
-/** Veri dizisinden dönem getirisi yüzdesi hesaplar; yetersiz veri null döner. */
-export function periodReturn(closes: Array<number | null>): number | null {
-  const clean = closes.filter((c) => typeof c === "number" && c > 0);
+/**
+ * Verilen kapanış serisinden dönem getirisi yüzdesi hesaplar.
+ * `lookback` verilirse son N bar üzerinden (örn. günlük seride N işlem günü),
+ * verilmezse tüm seri üzerinden hesaplanır. Yetersiz veri null döner.
+ */
+export function periodReturn(closes: Array<number | null>, lookback?: number): number | null {
+  const clean = closes.filter((c) => typeof c === "number" && c > 0) as number[];
   if (clean.length < 2) return null;
-  const first = clean[0] as number;
+  const bars =
+    lookback !== undefined && lookback > 0
+      ? Math.min(lookback, clean.length - 1)
+      : clean.length - 1;
+  const first = clean[clean.length - 1 - bars] as number;
   const last = clean[clean.length - 1] as number;
   if (first <= 0) return null;
   return round(((last - first) / first) * 100);
@@ -77,15 +85,22 @@ export function registerGetSectorPerformance(
     },
     { readOnlyHint: true, openWorldHint: true },
     async ({ period, includeGlobal }) => {
-      const rangeMap: Record<string, [string, string]> = {
-        "1d": ["5d", "1d"],
-        "5d": ["1mo", "1d"],
-        "1mo": ["3mo", "1d"],
-        "3mo": ["6mo", "1d"],
-        "6mo": ["1y", "1wk"],
-        "1y": ["2y", "1wk"],
+      // İstenen dönemi doğru ölçmek için yeterince geniş bir pencere çekilir,
+      // sonra yalnızca son `lookback` bar üzerinden getiri hesaplanır.
+      // Dikkat: fetchOhlc'nin `period` değeri PERIOD_DAYS anahtarı olmalı ("5d" değil).
+      const periodMap: Record<string, { range: string; interval: string; lookback: number }> = {
+        "1d": { range: "1mo", interval: "1d", lookback: 1 },
+        "5d": { range: "1mo", interval: "1d", lookback: 5 },
+        "1mo": { range: "3mo", interval: "1d", lookback: 21 },
+        "3mo": { range: "6mo", interval: "1d", lookback: 63 },
+        "6mo": { range: "1y", interval: "1d", lookback: 126 },
+        "1y": { range: "2y", interval: "1wk", lookback: 52 },
       };
-      const [range, interval] = rangeMap[period] as [string, string];
+      const { range, interval, lookback } = periodMap[period] as {
+        range: string;
+        interval: string;
+        lookback: number;
+      };
 
       try {
         const [sectorRows, globalRows] = await Promise.all([
@@ -97,7 +112,7 @@ export function registerGetSectorPerformance(
                 return {
                   symbol: etf.symbol,
                   sector: etf.sector,
-                  periodReturn: periodReturn(closes),
+                  periodReturn: periodReturn(closes, lookback),
                   bars: closes.length,
                 } satisfies SectorPerf;
               } catch {

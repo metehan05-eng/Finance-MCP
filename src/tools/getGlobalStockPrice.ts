@@ -14,6 +14,7 @@ export function registerGetGlobalStockPrice(server: McpServer) {
           "Küresel hisse veya endeks sembolü (ör. AAPL, NVDA, TSLA, MSFT, GOOGL, AMZN, SAP.DE, ^GSPC)"
         ),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ symbol }) => {
       const ticker = symbol.toUpperCase().trim();
 

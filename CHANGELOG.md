@@ -3,6 +3,32 @@
 Tüm notable değişiklikler bu dosyada belgelenir.
 Format: [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) — sürümleme: [SemVer](https://semver.org/lang/tr/).
 
+## [1.6.1] — 2026-10-14
+
+### Düzeltmeler
+- `httpCircuit`: Devre kesici soğuma sonrası başarısız bir denemede artık yeniden açılıyor; ölü `markProbing` yolu kaldırıldı (devre eskiden yalnızca bir kez açılabiliyordu).
+- `yahoo.resolveTickers`: Döviz çifti eşlemesi düzeltildi — `USD/TRY` artık `USDTRY=X` olarak çözülüyor (önceki hatalı `USD=XTRY`).
+- `get_sector_performance`: Dönem aralıkları düzeltildi. `rangeMap` içindeki Yahoo aralıkları artık geçerli; getiri yalnızca ilgili `lookback` penceresi üzerinden hesaplanıyor (1d/5d/1mo/3mo/6mo/1y) — tüm dönemler eskiden 365 güne düşüyordu.
+- `analyze_portfolio`: Gerçekleşmemiş getiri artık yalnızca **maliyeti bilinen** pozisyonlar üzerinden hesaplanıyor (maliyetsiz pozisyonların tüm değeri hatalı biçimde kâr sayılıyordu). TRY→USD kuru modül düzeyinden istek kapsamına taşındı (eşzamanlı çağrı yarışı giderildi).
+- `backtest_portfolio`: Haftalık veride yıllıklandırma 52 dönemle yapılıyor (252 sabiti kaldırıldı); ortak tarih kesişimi boşaldığında artık sıfırlanmıyor (son sembol tek başına geçemez).
+- `fetchWithRetry`: 429 yanıt gövdesi tüketiliyor (socket sızıntısı); son denemesi 429 ile biten istek devre sayacını artırıyor; ağ hatası deneme başına değil istek başına sayılıyor; `Retry-After` HTTP-tarih biçimini ve 30 sn üst sınırı destekliyor; çağıranın `signal`'ı `AbortSignal.any` ile korunuyor.
+- `financeMath.parseTrNumber`: Binlik ayraç desteği (`1.650.074`, `1,650,074`), İngilizce biçim ve çoklu ayraç doğru çözülüyor.
+- `xmlParser`: `Tarih_Date` kökü ve `Currency` düğümleri doğrulanıyor; bozuk/HTML gövdelerde açıklayıcı hata.
+- `cache`: Önbelleğe alınmış `null` sonuç artık "önbellekte yok" sayılmıyor (`found` ayrımı).
+- `watchlistStore`: Benzersiz geçici dosya adı (`pid` + `randomUUID`), hata halinde geçici dosya temizliği, dizin izni `0700`.
+
+### Geliştirilen
+- `toolCatalog`: Katalog, 44 aracın tamamını birebir kapsayacak şekilde yenilendi (7 birleşik ad ve `prompts` pseudo-girdisi kaldırıldı); `TOOL_CATALOG` dışa açıldı ve kataloğun kayıtlı araçlarla senkron olduğu testle doğrulanıyor.
+- `financePrompts`: Var olmayan araç atıfları düzeltildi (`get_bist_price`→`get_bist_indices`, `get_global_market_summary`→`get_market_summary`, `get_stock_price`→`get_bist_price`/`get_global_stock_price`).
+- `get_watchlist`: Sembol üst sınırı `MAX_WATCHLIST_SYMBOLS` (50) ile hizalandı (önceden 20).
+- `save_watchlist`: `symbols` alanı isteğe bağlı yapıldı ve açıklamadaki `replace=add` yazım hatası giderildi.
+- Tüm salt-okunur araçlara `readOnlyHint`/`openWorldHint` anotasyonları eklendi.
+- `.cursor/mcp.json` taşınabilir `${workspaceFolder}` yoluna çevrildi; `SECURITY.md` paket `files` listesine eklendi.
+- Test kapsamı 175 → 205 (`httpCircuit` yeniden açılma, `retryDelayMs`, katalog kompleliği, `commonDates`, `parseTrNumber`, null önbellekleme, xmlParser koruması, `forexTicker`, `analyze_portfolio` getiri + DI, `backtest_portfolio` DI). `all files` satır kapsamı %82,7 → %88,5.
+
+### Değişti
+- Sürüm: 1.6.1
+
 ## [1.6.0] — 2026-10-07
 
 ### Eklenen
@@ -18,7 +44,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) — sürümleme
 
 ### Düzeltmeler
 - `fetchWithRetry`: Hata yanıtları (4xx/5xx) artık önbelleğe yazılmaz; `cacheDelete` ile temizlenir.
-- Test kapsamı: DI tabanlı ağ yolu testleri (`get_watchlist`, `get_company_profile`, `compare_stocks`, `get_sector_performance`, `get_bist_indices`, `get_crypto_movers`) ve retry/429/5xx/devre kesici testleri eklendi; birim testi 150'ye çıktı.
+- Test kapsamı: DI tabanlı ağ yolu testleri (`get_watchlist`, `get_company_profile`, `compare_stocks`, `get_sector_performance`, `get_bist_indices`, `get_crypto_movers`) ve retry/429/5xx/devre kesici testleri eklendi; birim testi 175'e çıktı.
 
 ### Değişti
 - Sürüm: 1.6.0

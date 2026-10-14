@@ -19,6 +19,7 @@ export function registerGetTrendingStocks(server: McpServer) {
       region: z.string().length(2).default("TR").describe("Bölge kodu (TR, US, GB, DE, JP vb.)"),
       count: z.number().int().min(1).max(30).default(10).describe("Döndürülecek sembol sayısı"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ region, count }) => {
       try {
         const yf = await getYahoo();

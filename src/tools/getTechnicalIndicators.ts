@@ -65,6 +65,7 @@ export function registerGetTechnicalIndicators(server: McpServer) {
           "true ise tabloyu atlayıp yalnızca son sinyal özetini döndürür (token tasarrufu)"
         ),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ symbol, period, interval, indicators, limit, compact }) => {
       try {
         const chart = await tryBoth(symbol.trim().toUpperCase(), period, interval);

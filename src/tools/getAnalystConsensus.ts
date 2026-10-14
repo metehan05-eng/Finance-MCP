@@ -58,6 +58,7 @@ export function registerGetAnalystConsensus(server: McpServer) {
     {
       symbol: z.string().min(1).describe("Sembol (THYAO.IS, GARAN.IS, AAPL, NVDA)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ symbol }) => {
       try {
         const upper = symbol.trim().toUpperCase();

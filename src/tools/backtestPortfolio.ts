@@ -4,14 +4,43 @@ import { errorResponse } from "../utils/fetchWithRetry.js";
 import { fetchOhlc, tryBoth } from "../utils/yahoo.js";
 import { round, stdev, mean } from "../utils/financeMath.js";
 
-const TRADING_DAYS = 252;
+/** Veri periyoduna göre yıllık dönem sayısı (getirileri yıllıklandırmak için). */
+export function periodsPerYear(interval: "1d" | "1wk"): number {
+  return interval === "1wk" ? 52 : 252;
+}
+
+/**
+ * Birden çok tarih serisinin ortak günlerini döndürür.
+ * Kritik: kesişim boşaldığında bir sonraki seriyle SIFIRLANMAZ; boş kalırsa
+ * gerçekten ortak veri yok demektir (aksi halde son seri tek başına geçerdi).
+ */
+export function commonDates(series: Array<Map<string, number>>): string[] {
+  if (series.length === 0) return [];
+  let common = [...series[0].keys()];
+  for (let i = 1; i < series.length; i++) {
+    const m = series[i];
+    common = common.filter((d) => m.has(d));
+  }
+  return common;
+}
+
+/** Test edilebilirlik için dış bağımlılıklar; varsayılanlar gerçek kaynaklardır. */
+export interface BacktestDeps {
+  tryBoth: typeof tryBoth;
+  fetchOhlc: typeof fetchOhlc;
+}
+
+export const DEFAULT_BACKTEST_DEPS: BacktestDeps = { tryBoth, fetchOhlc };
 
 /**
  * Geçmiş portföy performans analizi (backtest).
  * TRY varlıklar USD'ye çevrilerek karşılaştırma yapılır; kur etkisi
  * ayrıca raporlanır.
  */
-export function registerBacktestPortfolio(server: McpServer) {
+export function registerBacktestPortfolio(
+  server: McpServer,
+  deps: BacktestDeps = DEFAULT_BACKTEST_DEPS
+) {
   server.tool(
     "backtest_portfolio",
     "Verilen portföy (sembol + adet) için geçmiş performans analizi yapar: toplam getiri, yıllıklanmış getiri (CAGR), volatilite, maksimum düşüş (drawdown), Sharpe oranı ve varlık bazlı katkılar. TRY varlıklar portföye girmeden önce USD'ye çevrilir; kur etkisi ayrıca gösterilir. Örn: [{symbol:'THYAO.IS',quantity:100},{symbol:'AAPL',quantity:20}]",
@@ -36,6 +65,7 @@ export function registerBacktestPortfolio(server: McpServer) {
         .default(5)
         .describe("Yıllık risksiz getiri oranı (%, Sharpe için, default 5)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ positions, period, interval, riskFreeRate }) => {
       try {
         // 1) Her varlık için kapanış serisi
@@ -43,7 +73,7 @@ export function registerBacktestPortfolio(server: McpServer) {
         const failures: string[] = [];
         for (const p of positions) {
           try {
-            const chart = await tryBoth(p.symbol.trim().toUpperCase(), period, interval);
+            const chart = await deps.tryBoth(p.symbol.trim().toUpperCase(), period, interval);
             const m = new Map<string, number>();
             for (const row of chart.rows) m.set(row.date.slice(0, 10), row.close as number);
             if (m.size > 0) series.set(p.symbol, m);
@@ -60,11 +90,7 @@ export function registerBacktestPortfolio(server: McpServer) {
         }
 
         // 2) Ortak takvim: her seride en az veri olanın kesişimi
-        let common: string[] = [];
-        for (const m of series.values()) {
-          const dates = [...m.keys()];
-          common = common.length === 0 ? dates : common.filter((d) => m.has(d));
-        }
+        const common = commonDates([...series.values()]);
         common.sort();
         if (common.length < 10) {
           return errorResponse(
@@ -75,7 +101,7 @@ export function registerBacktestPortfolio(server: McpServer) {
         // 3) Kur serisi (TRY varlıklarını USD'ye çevirmek için)
         let usdTry: Map<string, number> | null = null;
         try {
-          const fx = await fetchOhlc("USDTRY=X", { period, interval });
+          const fx = await deps.fetchOhlc("USDTRY=X", { period, interval });
           usdTry = new Map(fx.rows.map((r) => [r.date.slice(0, 10), r.close as number]));
         } catch {
           usdTry = null;
@@ -111,18 +137,19 @@ export function registerBacktestPortfolio(server: McpServer) {
         const values = daily.map((d) => d.valueUsd);
         const returns = values.slice(1).map((v, i) => (values[i] === 0 ? 0 : v / values[i] - 1));
 
-        const years = (common.length - 1) / TRADING_DAYS;
+        const years = (common.length - 1) / periodsPerYear(interval);
         const first = values[0];
         const lastV = values[values.length - 1];
         const totalReturn = first === 0 ? 0 : lastV / first - 1;
         const cagr = years > 0 && first > 0 ? Math.pow(lastV / first, 1 / years) - 1 : null;
 
-        const vol = stdev(returns) * Math.sqrt(TRADING_DAYS);
+        const periods = periodsPerYear(interval);
+        const vol = stdev(returns) * Math.sqrt(periods);
         const meanRet = mean(returns);
         const rf = riskFreeRate / 100;
         const sharpe =
           stdev(returns) > 0
-            ? (meanRet * TRADING_DAYS - rf) / (stdev(returns) * Math.sqrt(TRADING_DAYS))
+            ? (meanRet * periods - rf) / (stdev(returns) * Math.sqrt(periods))
             : null;
 
         // Maksimum düşüş

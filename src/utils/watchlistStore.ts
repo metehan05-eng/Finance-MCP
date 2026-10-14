@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import { randomUUID } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 
@@ -25,14 +26,14 @@ export function watchlistPath(env: NodeJS.ProcessEnv = process.env): string {
   return path.join(os.homedir(), ".finans-mcp", "watchlist.json");
 }
 
-/** Sembolleri büyük/küçük harf duyarlı biçimde tekilleştirir, ilk yazımı korur. */
+/** Sembolleri büyük harfe çevirip tekilleştirir; ilk görülen sırayı korur. */
 export function normalizeSymbols(symbols: string[]): string[] {
   const seen = new Map<string, string>();
   for (const raw of symbols) {
     const t = String(raw ?? "").trim();
     if (!t) continue;
     const key = t.toUpperCase();
-    if (!seen.has(key)) seen.set(key, t.toUpperCase());
+    if (!seen.has(key)) seen.set(key, key);
   }
   return [...seen.values()].slice(0, MAX_WATCHLIST_SYMBOLS);
 }
@@ -80,9 +81,15 @@ export async function saveWatchlist(
   const normalized = normalizeSymbols(symbols);
   const payload: WatchlistFile = { symbols: normalized, updatedAt: new Date().toISOString() };
   const dir = path.dirname(file);
-  await fs.mkdir(dir, { recursive: true });
-  const tmp = `${file}.${process.pid}.tmp`;
-  await fs.writeFile(tmp, `${JSON.stringify(payload, null, 2)}\n`, { mode: 0o600 });
-  await fs.rename(tmp, file);
+  await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+  // Benzersiz geçici ad: aynı süreçte eşzamanlı iki kayıt birbirinin üstüne yazmasın.
+  const tmp = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    await fs.writeFile(tmp, `${JSON.stringify(payload, null, 2)}\n`, { mode: 0o600 });
+    await fs.rename(tmp, file);
+  } catch (err) {
+    await fs.rm(tmp, { force: true }).catch(() => undefined);
+    throw err;
+  }
   return payload;
 }

@@ -181,11 +181,21 @@ export async function fetchQuote(symbol: string): Promise<any> {
 }
 
 /**
+ * Döviz çiftini Yahoo sembolüne çevirir: "USD/TRY" → "USDTRY=X".
+ * Eğik çizgi yoksa null döner (döviz çifti değildir).
+ */
+export function forexTicker(input: string): string | null {
+  const t = input.trim().toUpperCase();
+  if (!t.includes("/")) return null;
+  return `${t.replace(/\//g, "")}=X`;
+}
+
+/**
  * Girdi sembollerini Yahoo'nun tanıdığı gerçek ticker'lara bağlar.
  *
  * Neden: kullanıcı "THYAO" yazar ama Yahoo "THYAO.IS" bekler; kur çiftleri ise
  * "USD/TRY" yerine "USDTRY=X" olarak döner. Her araç bu çözümlemeyi tekrar
- * yazmasın diye burada toplandı (testler: yahoo.test.ts / araç testleri).
+ * yazmasın diye burada toplandı.
  *
  * Strateji: 1) tek batch quote ile toplu kontrol, 2) yalnızca bulunamayanlar için
  * `.IS` ve `=X` adayları tek tek (cache'li) denenir. Böylece gereksiz istek atılmaz.
@@ -207,18 +217,19 @@ export async function resolveTickers(symbols: string[]): Promise<Map<string, str
     if (q?.symbol) byKey.set(q.symbol.toUpperCase(), q);
   }
 
-  const lookup = (s: string): any | undefined =>
-    byKey.get(s.toUpperCase()) ?? byKey.get(`${s.toUpperCase().replace("/", "=X")}`);
+  const lookup = (s: string): any | undefined => {
+    const direct = byKey.get(s.toUpperCase());
+    if (direct) return direct;
+    const fx = forexTicker(s);
+    return fx ? byKey.get(fx) : undefined;
+  };
 
   const missing = list.filter((s) => !lookup(s));
 
   const resolved = await Promise.all(
     missing.map(async (s) => {
-      const candidates = s.includes("/")
-        ? [s.replace("/", "=X")]
-        : s.toUpperCase().endsWith(".IS")
-          ? [s]
-          : [s, `${s}.IS`];
+      const fx = forexTicker(s);
+      const candidates = fx ? [fx] : s.toUpperCase().endsWith(".IS") ? [s] : [s, `${s}.IS`];
       for (const c of candidates) {
         try {
           const q = await fetchQuote(c);

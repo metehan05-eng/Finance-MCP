@@ -4,15 +4,28 @@ import { errorResponse } from "../utils/fetchWithRetry.js";
 import { fetchQuotes, fetchQuote, fetchQuoteSummary } from "../utils/yahoo.js";
 import { round } from "../utils/financeMath.js";
 
-/** TRY → USD dönüşümünde kullanılan anlık kur (isteğin başında doldurulur). */
-let usdTryRate = 1;
+/** Test edilebilirlik için dış bağımlılıklar; varsayılanlar gerçek kaynaklardır. */
+export interface PortfolioDeps {
+  fetchQuotes: typeof fetchQuotes;
+  fetchQuote: typeof fetchQuote;
+  fetchQuoteSummary: typeof fetchQuoteSummary;
+}
+
+export const DEFAULT_PORTFOLIO_DEPS: PortfolioDeps = {
+  fetchQuotes,
+  fetchQuote,
+  fetchQuoteSummary,
+};
 
 /**
  * Portföy analizi: giriş, getiri, risk, Sharp oranı ve katkı payları.
  * Fiyatlar geçmiş OHLC yerine anlık kotasyonlarla ve pozisyonlarla
  * hesaplanır; risk metrikleri pozisyon ağırlıklarına göre tahmin edilir.
  */
-export function registerAnalyzePortfolio(server: McpServer) {
+export function registerAnalyzePortfolio(
+  server: McpServer,
+  deps: PortfolioDeps = DEFAULT_PORTFOLIO_DEPS
+) {
   server.tool(
     "analyze_portfolio",
     "Bir portföyün değerini, sektör/para birimi dağılımını, getirisini, riskini (volatilite), Sharp oranını ve günlük değişimini analiz eder. Pozisyon listesine hisse/endeks/ETF/kripto girebilirsiniz.",
@@ -51,21 +64,27 @@ export function registerAnalyzePortfolio(server: McpServer) {
           "Sektör/endüstri kırılımı, ağırlıklı beta ve yoğunlaşma uyarısı hesaplansın mı (sembol başına 1 ek istek)"
         ),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ positions, riskFreeRatePct, includeBreakdown }) => {
       try {
         const symbols = positions.map((p) => p.symbol.trim().toUpperCase());
-        const quotes = await fetchQuotes(symbols);
+        const quotes = await deps.fetchQuotes(symbols);
 
-        // TRY → USD dönüşümü için anlık kur (başarısız olursa 1 varsayılır)
-        usdTryRate = 1;
+        // TRY → USD dönüşümü için anlık kur. İstek kapsamında YEREL tutulur; modül
+        // düzeyinde global olsaydı eşzamanlı iki analiz birbirinin kurunu ezerdi.
+        let usdTryRate = 1;
         if (symbols.some((s) => s !== "USDTRY=X")) {
           try {
-            const rateQ = await fetchQuote("USDTRY=X");
+            const rateQ = await deps.fetchQuote("USDTRY=X");
             if (rateQ?.regularMarketPrice) usdTryRate = rateQ.regularMarketPrice;
           } catch {
             /* kura erişilemezse oran 1 varsayılır */
           }
         }
+        const toUsd = (p: { currency?: string; price: number }, overridePrice?: number): number => {
+          const price = overridePrice ?? p.price;
+          return p.currency === "TRY" ? price / usdTryRate : price;
+        };
 
         const quoteMap = new Map<string, any>(
           quotes.filter((q: any) => q?.symbol).map((q: any) => [q.symbol as string, q])
@@ -101,9 +120,13 @@ export function registerAnalyzePortfolio(server: McpServer) {
 
         const withCost = rich.filter((p) => p.cost != null);
         const costUsd = withCost.reduce((s, p) => s + toUsd(p, p.cost) * p.quantity, 0);
-        const gainUsd = withCost.length > 0 ? totalUsd - costUsd : null;
+        // Getiri yalnızca maliyeti bilinen pozisyonlar üzerinden ölçülür; aksi halde
+        // maliyetsiz pozisyonların tüm güncel değeri hatalı biçimde kâr sayılırdı.
+        const costedValueUsd = withCost.reduce((s, p) => s + toUsd(p) * p.quantity, 0);
+        const gainUsd = withCost.length > 0 ? costedValueUsd - costUsd : null;
         const gainPct =
           withCost.length > 0 && costUsd > 0 ? ((gainUsd as number) / costUsd) * 100 : null;
+        const totalCostUsd = withCost.length > 0 ? costUsd : null;
 
         // Konum bazlı detay
         const positionsDetail = rich.map((p) => ({
@@ -144,9 +167,9 @@ export function registerAnalyzePortfolio(server: McpServer) {
         if (includeBreakdown) {
           const profiles = await Promise.all(
             rich.map((p) =>
-              fetchQuoteSummary(p.symbol, ["summaryProfile", "summaryDetail"]).catch(
-                () => ({}) as Record<string, any>
-              )
+              deps
+                .fetchQuoteSummary(p.symbol, ["summaryProfile", "summaryDetail"])
+                .catch(() => ({}) as Record<string, any>)
             )
           );
 
@@ -197,7 +220,7 @@ export function registerAnalyzePortfolio(server: McpServer) {
                   usdTryRateUsed: round(usdTryRate, 4),
                   dailyChange: round(dailyChange, 2),
                   dailyChangePct: round(dailyChangePct),
-                  totalCostUsd: costUsd != null ? round(costUsd, 2) : null,
+                  totalCostUsd: totalCostUsd != null ? round(totalCostUsd, 2) : null,
                   unrealizedGainUsd: gainUsd != null ? round(gainUsd, 2) : null,
                   unrealizedGainPct: gainPct != null ? round(gainPct) : null,
                   note: "TRY cinsinden pozisyonlar güncel USDTRY kuruyla ABD dolarına çevrilerek toplanmıştır. Portföy farklı para birimleri içeriyorsa bu bir yaklaşımdır.",
@@ -289,13 +312,6 @@ function aggregate(items: Array<{ key: string; value: number }>): Record<string,
   }
   for (const k of Object.keys(out)) out[k] = round(out[k], 2) ?? 0;
   return out;
-}
-
-/** pozisyonun fiyatını (TRY ise kura bölerek) USD'ye çevirir. */
-function toUsd(p: { currency?: string; price: number }, overridePrice?: number): number {
-  const price = overridePrice ?? p.price;
-  if (p.currency === "TRY") return price / usdTryRate;
-  return price;
 }
 
 /** Hazır fonksiyon: ağırlıklı volatilite — tek varlık yerine sepet yaklaşımı. */

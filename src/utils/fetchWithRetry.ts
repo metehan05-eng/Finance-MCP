@@ -102,36 +102,40 @@ async function fetchRaw(url: string, options: RequestInit, maxRetries: number): 
   assertBreakerClosed(host);
 
   let lastError: Error | undefined;
+  let attemptFailures = 0;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10_000);
+    const signal = options.signal
+      ? AbortSignal.any([options.signal, controller.signal])
+      : controller.signal;
 
     try {
       const response = await fetch(url, {
         ...options,
-        signal: controller.signal,
+        signal,
       });
 
       clearTimeout(timeoutId);
 
-      // 429 Rate limit → bekle ve tekrar dene
+      // 429 Rate limit → yanıt gövdesini tüket (socket havuza dönsün), bekle, tekrar dene
       if (response.status === 429 && attempt < maxRetries) {
-        const retryAfter = response.headers.get("Retry-After");
-        const rawWaitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : attempt * 1500;
-        const waitMs = Number.isFinite(rawWaitMs) ? Math.min(rawWaitMs, 5000) : 5000;
+        const waitMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
+        await response.body?.cancel().catch(() => undefined);
         await sleep(waitMs);
         continue;
       }
 
-      if (response.status >= 500) recordFailure(host);
+      // 5xx ve 429 (son deneme) devre sayacını artırır; 429 "başarı" sayılmaz.
+      if (response.status >= 500 || response.status === 429) recordFailure(host);
       else recordSuccess(host);
 
       return response;
     } catch (err) {
       clearTimeout(timeoutId);
       lastError = err instanceof Error ? err : new Error(String(err));
-      recordFailure(host);
+      attemptFailures += 1;
 
       if (attempt < maxRetries) {
         await sleep(attempt * 1000); // 1s, 2s, 3s
@@ -139,7 +143,25 @@ async function fetchRaw(url: string, options: RequestInit, maxRetries: number): 
     }
   }
 
+  // Tek bir mantıksal istek için yalnızca BİR hata kaydı düşülür; her denemenin
+  // ayrı sayılması devreyi gereğinden hızlı açıyordu.
+  if (attemptFailures > 0) recordFailure(host);
+
   throw lastError ?? new Error("Bilinmeyen ağ hatası");
+}
+
+/**
+ * Retry-After başlığını milisaniyeye çevirir. Saniye değeri (RFC 9110) veya
+ * HTTP-tarih biçimi desteklenir; üst sınır 30 sn (kaynağı boğmamak için).
+ */
+export function retryDelayMs(header: string | null, attempt: number): number {
+  const MAX_WAIT_MS = 30_000;
+  if (!header) return attempt * 1500;
+  const seconds = Number(header.trim());
+  if (Number.isFinite(seconds)) return Math.min(Math.max(seconds, 0) * 1000, MAX_WAIT_MS);
+  const date = Date.parse(header);
+  if (Number.isFinite(date)) return Math.min(Math.max(date - Date.now(), 0), MAX_WAIT_MS);
+  return attempt * 1500;
 }
 
 function sleep(ms: number): Promise<void> {

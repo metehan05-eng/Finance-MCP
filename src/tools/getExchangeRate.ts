@@ -18,6 +18,7 @@ export function registerGetExchangeRate(server: McpServer) {
         .optional()
         .describe("Opsiyonel tarih (YYYY-MM-DD). Belirtilmezse en güncel kur döndürülür."),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ from, to, date }) => {
       const fromCode = from.toUpperCase();
       const toCode = to.toUpperCase();

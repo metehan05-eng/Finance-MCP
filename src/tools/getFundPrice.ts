@@ -53,6 +53,7 @@ export function registerGetFundPrice(server: McpServer) {
           "Geriye dönük kaç gün gösterilsin (TEFAS istek başına en fazla 28 gün). Varsayılan 28."
         ),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ fundCode, days }) => {
       const code = fundCode.trim().toUpperCase();
 

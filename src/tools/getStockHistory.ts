@@ -51,6 +51,7 @@ export function registerGetStockHistory(server: McpServer) {
           "true ise mum satırlarını atlayıp yalnızca özet istatistikleri döndürür (min/max/ortalama, toplam getiri, volatilite)"
         ),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ symbol, period, interval, startDate, endDate, limit, summaryOnly }) => {
       const input = symbol.trim().toUpperCase();
 

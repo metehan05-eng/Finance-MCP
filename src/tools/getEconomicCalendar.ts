@@ -42,6 +42,7 @@ export function registerGetEconomicCalendar(server: McpServer) {
         .default(25)
         .describe("Döndürülecek maksimum etkinlik sayısı (default: 25)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ range, country, impact, limit }) => {
       // ForexFactory feed'i zaman zaman ağır rate-limit uygular;
       // birkaç denemeyle ve bekleme ile esnek davranıyoruz.

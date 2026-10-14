@@ -24,27 +24,37 @@ export interface TcmbData {
 
 /**
  * TCMB XML verisini (today.xml veya arşiv) parse eder.
+ * Beklenmeyen gövde (HTML hata sayfası, şema değişikliği) için açıklayıcı hata fırlatır.
  */
 export function parseTcmbXml(xmlText: string): TcmbData {
   const parsed: any = parser.parse(xmlText);
-  const root = parsed["Tarih_Date"];
+  const root = parsed?.["Tarih_Date"];
+
+  if (!root || typeof root !== "object") {
+    throw new Error("TCMB XML biçimi tanınmadı (Tarih_Date kökü yok).");
+  }
 
   const date: string = root["@_Date"] ?? root["@_Tarih"] ?? "";
   const bulletinNo: string = root["@_Bulten_No"] ?? "";
 
-  const rawCurrencies: any[] = Array.isArray(root["Currency"])
-    ? root["Currency"]
-    : [root["Currency"]];
+  const currencyNode = root["Currency"];
+  const rawCurrencies: any[] = Array.isArray(currencyNode)
+    ? currencyNode
+    : currencyNode
+      ? [currencyNode]
+      : [];
 
-  const currencies: TcmbCurrency[] = rawCurrencies.map((c) => ({
-    code: c["@_CurrencyCode"] ?? "",
-    unit: Number(c["Unit"]) || 1,
-    currencyName: c["CurrencyName"] ?? "",
-    forexBuying: toNumber(c["ForexBuying"]),
-    forexSelling: toNumber(c["ForexSelling"]),
-    banknoteBuying: toNumber(c["BanknoteBuying"]),
-    banknoteSelling: toNumber(c["BanknoteSelling"]),
-  }));
+  const currencies: TcmbCurrency[] = rawCurrencies
+    .filter((c) => c && typeof c === "object")
+    .map((c) => ({
+      code: c["@_CurrencyCode"] ?? "",
+      unit: Number(c["Unit"]) || 1,
+      currencyName: c["CurrencyName"] ?? "",
+      forexBuying: toNumber(c["ForexBuying"]),
+      forexSelling: toNumber(c["ForexSelling"]),
+      banknoteBuying: toNumber(c["BanknoteBuying"]),
+      banknoteSelling: toNumber(c["BanknoteSelling"]),
+    }));
 
   return { date, bulletinNo, currencies };
 }

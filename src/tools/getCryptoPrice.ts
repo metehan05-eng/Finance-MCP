@@ -19,6 +19,7 @@ export function registerGetCryptoPrice(server: McpServer) {
         .default("usd")
         .describe("Fiyatın gösterileceği para birimi, ör. 'usd', 'try', 'eur'"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ coinId, vsCurrency }) => {
       const currency = vsCurrency.toLowerCase();
       const id = coinId.toLowerCase();

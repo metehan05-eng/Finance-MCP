@@ -26,6 +26,7 @@ export function registerGetMarketSummary(server: McpServer) {
     "get_market_summary",
     "Borsa İstanbul piyasa özeti: XU100/XU030/XU050 ana endekslerinin ve önemli hisselerin (banka, sanayi) anlık fiyat ve değişim bilgileri.",
     {},
+    { readOnlyHint: true, openWorldHint: true },
     async () => {
       try {
         const all = [

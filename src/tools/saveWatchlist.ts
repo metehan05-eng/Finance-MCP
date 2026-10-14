@@ -55,14 +55,15 @@ export function registerSaveWatchlist(
       symbols: z
         .array(z.string().min(1))
         .max(MAX_WATCHLIST_SYMBOLS)
+        .optional()
         .describe(
-          "Semboller (örn: ['THYAO', 'GARAN', 'AAPL', 'BTC-USD']). mode=clear ve mode=replace için boş bırakılabilir."
+          "Semboller (örn: ['THYAO', 'GARAN', 'AAPL', 'BTC-USD']). mode=clear için boş bırakılabilir; mode=replace boş verilirse liste temizlenir."
         ),
       mode: z
         .enum(["replace", "add", "remove", "clear"])
         .default("replace")
         .describe(
-          "Kaydetme modu: replace=add, add=mevcut listeye ekle, remove=çıkar, clear=temizle"
+          "Kaydetme modu: replace=listeyi tamamen değiştir, add=mevcut listeye ekle, remove=çıkar, clear=temizle"
         ),
     },
     { readOnlyHint: false, openWorldHint: false },

@@ -34,20 +34,28 @@ function prune(now: number): void {
   }
 }
 
-/** Önbellekten okur; yoksa null döner. */
-export function cacheGet<T>(key: string): T | null {
+/**
+ * Önbellekten okur. `found` hem "girdi var" hem değeri döndürür; böylece
+ * önbelleğe alınmış `null` sonuç ile "önbellekte yok" ayırt edilebilir.
+ */
+function lookup<T>(key: string): { found: boolean; value: T | null } {
   const e = store.get(key);
   if (!e) {
     misses++;
-    return null;
+    return { found: false, value: null };
   }
   if (e.expiresAt <= Date.now()) {
     store.delete(key);
     misses++;
-    return null;
+    return { found: false, value: null };
   }
   hits++;
-  return e.value as T;
+  return { found: true, value: e.value as T };
+}
+
+/** Önbellekten okur; yoksa null döner. */
+export function cacheGet<T>(key: string): T | null {
+  return lookup<T>(key).value;
 }
 
 /** Önbelleğe yazar. */
@@ -84,8 +92,8 @@ export function cacheStats() {
  * `fn` yalnızca bir kez çalışır; sonuç TTL boyunca önbelleklenir.
  */
 export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promise<T>): Promise<T> {
-  const hit = cacheGet<T>(key);
-  if (hit !== null) return hit;
+  const hit = lookup<T>(key);
+  if (hit.found) return hit.value as T;
 
   const running = inflight.get(key) as Promise<T> | undefined;
   if (running) return running;

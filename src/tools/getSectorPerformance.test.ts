@@ -12,6 +12,18 @@ test("null ve sıfır kapanışlar atlanır", () => {
   assert.equal(periodReturn([100, null, 0, 120]), 20);
 });
 
+test("lookback verilince yalnızca son N dönem kullanılır", () => {
+  // 5 günlük seride günlük getiriler: 100→110(+10), →121(+10), →133.1(+10)
+  const closes = [100, 110, 121, 133.1];
+  assert.equal(periodReturn(closes, 1), 10, "son 1 dönem");
+  assert.equal(periodReturn(closes, 2), 21, "son 2 dönem");
+  assert.equal(periodReturn(closes), 33.1, "lookback yoksa tüm pencere");
+});
+
+test("lookback seriden uzunsa tüm pencereye kırpılır", () => {
+  assert.equal(periodReturn([100, 150], 99), 50);
+});
+
 test("yetersiz veri null döner", () => {
   assert.equal(periodReturn([]), null);
   assert.equal(periodReturn([100]), null);

@@ -21,6 +21,7 @@ export function registerGetMultiCryptoPrice(server: McpServer) {
         .default("usd")
         .describe("Fiyatların gösterileceği para birimi, ör. 'usd', 'try', 'eur'"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ coinIds, vsCurrency }) => {
       const currency = vsCurrency.toLowerCase();
       const ids = coinIds.map((id) => id.toLowerCase().trim());

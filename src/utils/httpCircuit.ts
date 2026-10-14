@@ -65,14 +65,16 @@ export function recordFailure(
 ): void {
   const state = breakers.get(host) ?? { failures: 0, openedAt: null, probing: false };
 
-  // Yarı açık durumda bir deneme yapılıyordu: başarısız olursa yeniden aç.
-  if (state.probing) {
+  // Devre zaten açık (veya yarı açık deneme yapılıyordu): soğumayı şimdiye çekip
+  // yeniden kapat. Böylece soğuma dolduktan sonraki başarısız deneme devreyi
+  // tekrar açar; aksi halde `openedAt` hiç güncellenmez ve devre bir daha korumaz.
+  if (state.openedAt !== null || state.probing) {
     breakers.set(host, { failures: config.failureThreshold, openedAt: now, probing: false });
     return;
   }
 
   state.failures += 1;
-  if (state.failures >= config.failureThreshold && state.openedAt === null) {
+  if (state.failures >= config.failureThreshold) {
     state.openedAt = now;
   }
   breakers.set(host, state);
@@ -122,7 +124,8 @@ export function assertBreakerClosed(
 ): void {
   const status = breakerStatus(host, now, config);
   if (status.open) {
-    markProbing(host, now, config);
     throw new BreakerOpenError(host, status.retryInMs);
   }
+  // Soğuma süresi dolduysa istek geçer (yarı açık). Deneme başarısız olursa
+  // recordFailure, soğumayı yenileyip devreyi yeniden açar.
 }

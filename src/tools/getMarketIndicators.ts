@@ -33,6 +33,7 @@ export function registerGetMarketIndicators(server: McpServer) {
     "get_market_indicators",
     "Makro piyasa göstergelerini tek çağrıda döndürür: VIX (korku endeksi), ABD 13 hafta/5/10/30 yıl tahvil faizleri ve Dolar Endeksi (DXY). Piyasa risk iştahı ve getiri eğrisi analizi için.",
     {},
+    { readOnlyHint: true, openWorldHint: true },
     async () => {
       try {
         const quotes = await fetchQuotes(INDICATORS.map((i) => i.symbol));

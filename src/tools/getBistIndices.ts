@@ -104,6 +104,7 @@ export function registerGetBistIndices(server: McpServer, deps: BistDeps = DEFAU
         .default(true)
         .describe("Sektörlerin BIST 100'e göre göreli performansı hesaplansın mı"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ indices, includeSectorPerformance }) => {
       const codes = (indices ?? DEFAULT_CODES).map((c) => c.toUpperCase().replace(/\.IS$/i, ""));
 

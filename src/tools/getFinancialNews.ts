@@ -76,6 +76,7 @@ export function registerGetFinancialNews(server: McpServer) {
         .default(10)
         .describe("Döndürülecek başlık sayısı (default: 10)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ ticker, limit }) => {
       const t = ticker.trim().toUpperCase();
 

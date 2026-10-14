@@ -18,6 +18,7 @@ export function registerGetTcmbRate(server: McpServer) {
           "Para birimi kodu, ör. USD, EUR, GBP, JPY, CHF, SEK, NOK, DKK, CAD, AUD, KWD, SAR"
         ),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ currencyCode }) => {
       const code = currencyCode.toUpperCase();
 

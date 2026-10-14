@@ -69,6 +69,14 @@ test("parseTrNumber: Türkçe sayı biçimleri", () => {
   assert.equal(parseTrNumber(null), null);
 });
 
+test("parseTrNumber: binlik ayraç ve İngilizce biçim", () => {
+  close(parseTrNumber("1.650.074")!, 1_650_074);
+  close(parseTrNumber("1,650,074")!, 1_650_074);
+  close(parseTrNumber("1,234.56")!, 1234.56, 0.001);
+  close(parseTrNumber("1.234.567,89")!, 1_234_567.89, 0.001);
+  close(parseTrNumber("42")!, 42);
+});
+
 test("round: null geçer, ondalık yuvarlar", () => {
   assert.equal(round(null), null);
   assert.equal(round(1.23456), 1.23);

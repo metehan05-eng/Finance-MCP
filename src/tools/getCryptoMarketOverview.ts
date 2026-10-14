@@ -59,6 +59,7 @@ export function registerGetCryptoMarketOverview(server: McpServer) {
         .default(true)
         .describe("En çok aranan (trending) kripto listesi de dahil edilsin mi"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ includeTrending }) => {
       try {
         const globalRes = await fetchWithRetry(GLOBAL_URL, {

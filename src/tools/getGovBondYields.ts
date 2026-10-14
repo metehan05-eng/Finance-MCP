@@ -30,6 +30,7 @@ export function registerGetGovBondYields(server: McpServer) {
     "get_gov_bond_yields",
     "Türkiye 10 yıllık devlet tahvili faizini ve gösterge (referans/2 yıllık) tahvil faizini döndürür. Kaynak: doviz.com tahvil bülteni.",
     {},
+    { readOnlyHint: true, openWorldHint: true },
     async () => {
       try {
         const response = await fetchWithRetry(DOVIZ_10Y_URL, {

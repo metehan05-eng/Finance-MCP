@@ -45,6 +45,7 @@ export function registerGetEarningsInfo(server: McpServer) {
     {
       symbol: z.string().min(1).describe("Sembol (THYAO.IS, AAPL, NVDA, MSFT)"),
     },
+    { readOnlyHint: true, openWorldHint: true },
     async ({ symbol }) => {
       try {
         const upper = symbol.trim().toUpperCase();
