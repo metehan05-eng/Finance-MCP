@@ -170,3 +170,53 @@ test("maliyet verilmezse getiri alanları null olur", async () => {
   assert.equal(data.unrealizedGainUsd, null);
   assert.equal(data.unrealizedGainPct, null);
 });
+
+test("kur alınamazsa TRY pozisyonlu portföy hata döner (1 varsayılmaz)", async () => {
+  const { server, registered } = fakeServer();
+  const deps: PortfolioDeps = {
+    fetchQuotes: (async () => [
+      {
+        symbol: "THYAO.IS",
+        regularMarketPrice: 100,
+        regularMarketPreviousClose: 99,
+        currency: "TRY",
+      },
+    ]) as any,
+    fetchQuote: (async () => {
+      throw new Error("network down");
+    }) as any,
+    fetchQuoteSummary: (async () => ({})) as any,
+  };
+  registerAnalyzePortfolio(server, deps);
+
+  const out = await registered.get("analyze_portfolio")!({
+    positions: [{ symbol: "THYAO.IS", quantity: 10 }],
+    includeBreakdown: false,
+  });
+
+  assert.equal(out.isError, true);
+  assert.match(out.content[0].text, /USD\/TRY kuru alınamadı/);
+});
+
+test("kur alınamasa bile TRY olmayan portföy hesaplanmaya devam eder", async () => {
+  const { server, registered } = fakeServer();
+  const deps: PortfolioDeps = {
+    fetchQuotes: (async () => [
+      { symbol: "AAPL", regularMarketPrice: 100, regularMarketPreviousClose: 99, currency: "USD" },
+    ]) as any,
+    fetchQuote: (async () => {
+      throw new Error("network down");
+    }) as any,
+    fetchQuoteSummary: (async () => ({})) as any,
+  };
+  registerAnalyzePortfolio(server, deps);
+
+  const out = await registered.get("analyze_portfolio")!({
+    positions: [{ symbol: "AAPL", quantity: 10 }],
+    includeBreakdown: false,
+  });
+  const data = JSON.parse(out.content[0].text);
+
+  assert.equal(out.isError, undefined);
+  assert.equal(data.portfolioValueUsd, 1000);
+});

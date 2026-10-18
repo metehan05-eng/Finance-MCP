@@ -20,8 +20,9 @@ export interface ComparisonRow {
   beta: number | null;
 }
 
+// %0 geçerli bir değerdir (ör. zayıf ROE): yalnızca null/NaN/undefined null döner.
 const pct = (v: unknown): number | null =>
-  typeof v === "number" && Number.isFinite(v) && v !== 0 ? round((v as number) * 100) : null;
+  typeof v === "number" && Number.isFinite(v) ? round(v * 100) : null;
 
 /** Ham quote + summary modüllerinden karşılaştırma satırı üretir (eksik alanlar null). */
 export function buildRow(

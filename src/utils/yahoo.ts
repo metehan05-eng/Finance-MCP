@@ -88,7 +88,13 @@ export async function fetchOhlc(
         }
       }
 
-      const period2 = opts.endDate ? new Date(opts.endDate) : new Date();
+      // Yahoo period2'yi münhasır (exclusive) işler: verilen bitiş tarihinin kendisi
+      // de gelsin diye bir gün eklenir.
+      const endDateParsed = opts.endDate ? new Date(opts.endDate) : null;
+      const period2 =
+        endDateParsed && !isNaN(endDateParsed.getTime())
+          ? new Date(endDateParsed.getTime() + 86_400_000)
+          : new Date();
       const interval = opts.interval ?? "1d";
 
       const result: any = await withRetry(
@@ -97,6 +103,9 @@ export async function fetchOhlc(
             period1,
             period2,
             interval,
+            // Pre/post bar'ları sahte "güncel fiyat" satırı ekliyor (toplam bar,
+            // ortalama seslilik ve volatilite hesaplarını şişiriyordu).
+            includePrePost: false,
             ...(opts.events ? { events: opts.events } : {}),
           }),
         { attempts: 3, label: `chart ${symbol}` }
@@ -106,20 +115,38 @@ export async function fetchOhlc(
       const quotes: any[] =
         result?.quotes ?? result?.chart?.result?.[0]?.indicators?.quote?.[0] ?? [];
 
-      const rows: OhlcRow[] = quotes
-        .map((q) => ({
-          date:
-            q.date instanceof Date
-              ? q.date.toISOString()
-              : new Date(q.date * 1000 || q.date).toISOString(),
+      // Tarihler borsanın yerel gününe göre etiketlenir: UTC etiket, AU/NZ gibi
+      // doğu yarımküresinde seans gününü kaydırıyor ve çapraz piyasa eşleşmelerini
+      // bozuyordu. (DST geçmişi tam yansıtmaz; yine de UTC'den çok daha doğrudur.)
+      const gmtoff = Number.isFinite(Number(meta?.gmtoffset)) ? Number(meta.gmtoffset) : 0;
+      const toMs = (t: number | Date): number => (t instanceof Date ? t.getTime() : t * 1000 || t);
+
+      // Yahoo bazı yabancı borsalarda includePrePost'tan bağımsız olarak sonu
+      // regularMarketTime damgalı (saniyeli) sahte bir bar döndürüyor. Gerçek
+      // oturum barları tam açılış anında (saniye 0) ve regularMarketTime ile
+      // farklı damgalanır.
+      const rmt = meta?.regularMarketTime;
+      const regMs = rmt instanceof Date ? rmt.getTime() : Number(rmt) * 1000;
+      const isStubBar = (ts: number): boolean =>
+        Math.floor(ts / 1000) % 60 !== 0 || (Number.isFinite(regMs) && ts === regMs);
+
+      const mapped = quotes.map((q) => ({
+        ts: toMs(q.date),
+        row: {
+          date: new Date(toMs(q.date) + gmtoff * 1000).toISOString(),
           open: q.open ?? null,
           high: q.high ?? null,
           low: q.low ?? null,
           close: q.close ?? null,
           adjClose: q.adjclose ?? q.adjClose ?? null,
           volume: q.volume ?? null,
-        }))
-        .filter((r) => r.close !== null);
+        } satisfies OhlcRow,
+      }));
+
+      const rows: OhlcRow[] = mapped
+        .filter((m) => m.row.close !== null)
+        .filter((m, i, arr) => !(i === arr.length - 1 && isStubBar(m.ts)))
+        .map((m) => m.row);
 
       if (gMax && rows.length > 4000) {
         // max veri seti çok büyükse son 4000 günü koru

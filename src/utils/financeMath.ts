@@ -51,21 +51,23 @@ export function priceToReturns(prices: number[]): number[] {
 }
 
 /**
- * Günlük getirilerden yıllıklandırılmış getiri (bileşik).
+ * Getirilerden yıllıklandırılmış getiri (bileşik).
+ * `periodsPerYear` getiri periyoduna göre ayarlanır: 252 (günlük), 52 (haftalık), 12 (aylık).
  */
-export function annualizedReturn(dailyReturns: number[]): number {
+export function annualizedReturn(dailyReturns: number[], periodsPerYear = 252): number {
   if (dailyReturns.length < 2) return 0;
   const total = dailyReturns.reduce((a, b) => a * (1 + b), 1);
   const n = dailyReturns.length;
-  return Math.pow(total, 252 / n) - 1;
+  return Math.pow(total, periodsPerYear / n) - 1;
 }
 
 /**
- * Günlük getirilerden yıllıklandırılmış volatilite (std dev, %).
+ * Getirilerden yıllıklandırılmış volatilite (std dev).
+ * `periodsPerYear` getiri periyoduna göre ayarlanır: 252 (günlük), 52 (haftalık), 12 (aylık).
  */
-export function annualizedVolatility(dailyReturns: number[]): number {
+export function annualizedVolatility(dailyReturns: number[], periodsPerYear = 252): number {
   if (dailyReturns.length < 2) return 0;
-  return stdev(dailyReturns) * Math.sqrt(252);
+  return stdev(dailyReturns) * Math.sqrt(periodsPerYear);
 }
 
 /**

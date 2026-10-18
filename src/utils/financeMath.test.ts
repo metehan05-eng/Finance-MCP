@@ -60,6 +60,21 @@ test("annualizedVolatility: günlük sapma * sqrt(252)", () => {
   assert.equal(annualizedVolatility([0.01]), 0);
 });
 
+test("annualized*: periodsPerYear periyoda göre yıllıklaştırır", () => {
+  // 12 aylık %1 getiri → (1.01)^12 - 1 ≈ %12.68 (252 ile değil!)
+  const monthly = new Array(12).fill(0.01);
+  close(annualizedReturn(monthly, 12), Math.pow(1.01, 12) - 1);
+  close(annualizedReturn(monthly, 12), 0.1268, 0.001);
+
+  // haftalık/aylık volatilite katsayısı 52/12 ile çarpılır
+  const r = [0.01, -0.01, 0.01, -0.01];
+  close(annualizedVolatility(r, 12), stdev(r) * Math.sqrt(12));
+  close(annualizedVolatility(r, 52), stdev(r) * Math.sqrt(52));
+
+  // varsayılan korunur (252)
+  close(annualizedVolatility(r), stdev(r) * Math.sqrt(252));
+});
+
 test("parseTrNumber: Türkçe sayı biçimleri", () => {
   close(parseTrNumber("16382,0000")!, 16382);
   close(parseTrNumber("%1,25")!, 1.25);

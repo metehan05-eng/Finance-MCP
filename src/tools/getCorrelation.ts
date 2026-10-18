@@ -74,6 +74,8 @@ export function registerGetCorrelation(server: McpServer) {
         const cov =
           rA.map((v, i) => (v - mean(rA)) * (rB[i] - mean(rB))).reduce((s, v) => s + v, 0) /
           (rA.length - 1);
+        // Yıllıklaştırma katsayısı getiri periyoduna göre değişir (252/52/12).
+        const periodsPerYear = interval === "1d" ? 252 : interval === "1wk" ? 52 : 12;
 
         return {
           content: [
@@ -92,15 +94,15 @@ export function registerGetCorrelation(server: McpServer) {
                   covariance: round(cov, 6),
                   interpretation: interpretCorrelation(corr),
                   statsA: {
-                    annReturnPct: round(annualizedReturn(rA) * 100),
-                    annVolPct: round(annualizedVolatility(rA) * 100),
+                    annReturnPct: round(annualizedReturn(rA, periodsPerYear) * 100),
+                    annVolPct: round(annualizedVolatility(rA, periodsPerYear) * 100),
                     returns: rA.length,
                     firstClose: round(xs[0], 2),
                     lastClose: round(xs[xs.length - 1], 2),
                   },
                   statsB: {
-                    annReturnPct: round(annualizedReturn(rB) * 100),
-                    annVolPct: round(annualizedVolatility(rB) * 100),
+                    annReturnPct: round(annualizedReturn(rB, periodsPerYear) * 100),
+                    annVolPct: round(annualizedVolatility(rB, periodsPerYear) * 100),
                     returns: rB.length,
                     firstClose: round(ys[0], 2),
                     lastClose: round(ys[ys.length - 1], 2),

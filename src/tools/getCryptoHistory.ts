@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
-import { fetchOhlc } from "../utils/yahoo.js";
+import { fetchOhlc, searchSymbols, type ChartResult } from "../utils/yahoo.js";
 import { round } from "../utils/financeMath.js";
 
 /**
@@ -36,44 +36,81 @@ const CRYPTO_SYMBOL_MAP: Record<string, string> = {
   link: "LINK-USD",
   "shiba-inu": "SHIB-USD",
   "shiba inu": "SHIB-USD",
-  matic: "MATIC-USD",
-  "matic-network": "MATIC-USD",
-  polygon: "MATIC-USD",
-  pol: "MATIC-USD",
+  // MATIC artık ölü; Polygon token'ı Yahoo'da ID'li sembolle işlem görüyor.
+  matic: "POL28321-USD",
+  "matic-network": "POL28321-USD",
+  polygon: "POL28321-USD",
+  pol: "POL28321-USD",
   toncoin: "TON11419-USD",
   ton: "TON11419-USD",
   near: "NEAR-USD",
-  aptos: "APT-USD",
-  apt: "APT-USD",
+  aptos: "APT21794-USD",
+  apt: "APT21794-USD",
   arbitrum: "ARB-USD",
   "arbitrum-memecoin": "ARB-USD",
-  render: "RNDR-USD",
-  rndr: "RNDR-USD",
+  render: "RENDER-USD",
+  rndr: "RENDER-USD",
   "bitcoin-cash": "BCH-USD",
   bch: "BCH-USD",
   cosmos: "ATOM-USD",
   atom: "ATOM-USD",
   vechain: "VET-USD",
   vet: "VET-USD",
-  uniswap: "UNI-USD",
-  uni: "UNI-USD",
+  uniswap: "UNI7083-USD",
+  uni: "UNI7083-USD",
   "lido-dao": "LDO-USD",
   ldo: "LDO-USD",
   filecoin: "FIL-USD",
   fil: "FIL-USD",
   stellar: "XLM-USD",
   xlm: "XLM-USD",
-  "the-graph": "GRT-USD",
-  grt: "GRT-USD",
+  "the-graph": "GRT6719-USD",
+  grt: "GRT6719-USD",
   "internet-computer": "ICP-USD",
   icp: "ICP-USD",
-  pepe: "PEPE-USD",
+  pepe: "PEPE24478-USD",
   "usd-coin": "USDC-USD",
   usdc: "USDC-USD",
-  sui: "SUI-USD",
+  sui: "SUI20947-USD",
   "ethereum-classic": "ETC-USD",
   etc: "ETC-USD",
 };
+
+/** Sub-cent coin'ler (SHIB, PEPE vb.) 2 ondalıkla sıfırlanmasın diye dinamik hassasiyet. */
+function priceDp(v: number | null): number {
+  return v !== null && Math.abs(v) < 1 ? 8 : 2;
+}
+
+/**
+ * Statik eşleme kaçırırsa (Yahoo coin'leri ID'li sembollere taşıyabiliyor)
+ * Yahoo araması ile gerçek sembolü bulup veriyi yeniden dener.
+ */
+async function resolveViaSearch(input: string, period: string): Promise<ChartResult | null> {
+  const queries = [input, `${input}-USD`];
+  for (const q of queries) {
+    let hits: any[];
+    try {
+      hits = await searchSymbols(q, 8);
+    } catch {
+      continue;
+    }
+    const hit = hits.find(
+      (h) =>
+        h?.symbol &&
+        typeof h.symbol === "string" &&
+        h.symbol.endsWith("-USD") &&
+        (h.quoteType === "CRYPTOCURRENCY" || h.quoteType === undefined)
+    );
+    if (!hit) continue;
+    try {
+      const chart = await fetchOhlc(hit.symbol, { period });
+      if (chart.rows.length > 0) return chart;
+    } catch {
+      /* sonraki adayı dene */
+    }
+  }
+  return null;
+}
 
 export function registerGetCryptoHistory(server: McpServer) {
   server.tool(
@@ -106,13 +143,14 @@ export function registerGetCryptoHistory(server: McpServer) {
     async ({ coin, vsCurrency, period, limit }) => {
       const input = coin.trim().toLowerCase();
 
-      // Bilinen ad → sembol; yoksa kullanıcı girişini olduğu gibi kullan
+      // Bilinen ad → sembol; 'XXX-USD' gibi doğrudan sembol girişleri büyük/küçük
+      // harf duyarsız kabul edilir ("Bitcoin-USD" de çalışsın).
       let usdSymbol: string;
-      if (/[A-Z]{3,}-\w+/.test(coin.trim())) {
+      if (/[A-Za-z]{3,}-\w+/.test(coin.trim())) {
         usdSymbol = coin.trim().toUpperCase();
       } else if (CRYPTO_SYMBOL_MAP[input]) {
         usdSymbol = CRYPTO_SYMBOL_MAP[input];
-      } else if (/\^?[A-Z0-9]{2,10}-USD/i.test(coin)) {
+      } else if (/\^?[A-Za-z0-9]{2,10}-USD/i.test(coin)) {
         usdSymbol = coin.trim().toUpperCase();
       } else {
         // bilinmeyen ad: en iyi tahmin {isim}-USD
@@ -120,9 +158,16 @@ export function registerGetCryptoHistory(server: McpServer) {
       }
 
       try {
-        const chart = await fetchOhlc(usdSymbol, { period });
+        let chart: ChartResult | null = null;
+        try {
+          const fetched = await fetchOhlc(usdSymbol, { period });
+          if (fetched.rows.length > 0) chart = fetched;
+        } catch {
+          /* statik sembol ölmüş olabilir; arama ile çözümlenecek */
+        }
+        if (!chart) chart = await resolveViaSearch(input, period);
 
-        if (chart.rows.length === 0) {
+        if (!chart || chart.rows.length === 0) {
           return errorResponse(
             `'${coin}' için kripto geçmişi bulunamadı. Adı veya sembolü kontrol edin (bitcoin, ETH-USD vb.).`
           );
@@ -158,10 +203,10 @@ export function registerGetCryptoHistory(server: McpServer) {
 
         const data = rows.map((r) => ({
           date: r.date.slice(0, 10),
-          open: round(r.open),
-          high: round(r.high),
-          low: round(r.low),
-          close: round(r.close),
+          open: round(r.open, priceDp(r.open)),
+          high: round(r.high, priceDp(r.high)),
+          low: round(r.low, priceDp(r.low)),
+          close: round(r.close, priceDp(r.close)),
           volume: r.volume,
         }));
 
@@ -183,9 +228,9 @@ export function registerGetCryptoHistory(server: McpServer) {
                   period,
                   dataPoints: data.length,
                   summary: {
-                    firstClose: round(first),
-                    lastClose: round(last),
-                    change: round(change),
+                    firstClose: round(first, priceDp(first ?? null)),
+                    lastClose: round(last, priceDp(last ?? null)),
+                    change: round(change, priceDp(change ?? null)),
                     changePercent: round(changePercent),
                   },
                   data,
@@ -196,7 +241,7 @@ export function registerGetCryptoHistory(server: McpServer) {
                       : "Kripto veriler 15-60 dakika gecikmeli olabilir.",
                 },
                 null,
-                0
+                2
               ),
             },
           ],

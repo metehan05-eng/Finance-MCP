@@ -35,9 +35,9 @@ const only = onlyArg
 
 /** critical: true → başarısızlık koşuyu düşürür. */
 const CASES = [
-  { name: "get_exchange_rate", args: { from: "USD", to: "TRY" }, critical: false },
-  { name: "get_crypto_price", args: { coinId: "bitcoin" }, critical: false },
-  { name: "get_bist_price", args: { symbol: "XU100" }, critical: false },
+  { name: "get_exchange_rate", args: { from: "USD", to: "TRY" }, critical: true },
+  { name: "get_crypto_price", args: { coinId: "bitcoin" }, critical: true },
+  { name: "get_bist_price", args: { symbol: "XU100" }, critical: true },
   { name: "get_tcmb_snapshot", args: {}, critical: false },
   { name: "get_altin_gram_price", args: {}, critical: false },
   {
@@ -106,6 +106,11 @@ proc.on("exit", (code) => {
     console.error(`Sunucu beklenenden erken kapandı (exit ${code}).`);
     process.exit(2);
   }
+  // El sıkışma sonrası bekleyen istekleri reddet; aksi halde koşu sonsuza kadar asılı kalır.
+  for (const { reject } of pending.values()) {
+    reject(new Error(`Sunucu kapandı (exit ${code}); bekleyen istek yanıtlanamadı.`));
+  }
+  pending.clear();
 });
 const rl = createInterface({ input: proc.stdout });
 
@@ -115,7 +120,7 @@ rl.on("line", (line) => {
   try {
     const msg = JSON.parse(line);
     if (msg.id && pending.has(msg.id)) {
-      pending.get(msg.id)(msg);
+      pending.get(msg.id).resolve(msg);
       pending.delete(msg.id);
     }
   } catch {
@@ -124,13 +129,26 @@ rl.on("line", (line) => {
 });
 
 const send = (method, params) =>
-  new Promise((res) => {
+  new Promise((resolve, reject) => {
     const mid = ++id;
-    pending.set(mid, res);
+    pending.set(mid, { resolve, reject });
     proc.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: mid, method, params }) + "\n");
   });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Askıda kalan bir istek koşuyu asmasın: her çağrı yanıt süresiyle sınırlanır.
+const withTimeout = (promise, ms, label) => {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} ${ms / 1000} sn içinde yanıt vermedi.`)),
+      ms
+    );
+    timer.unref?.();
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
 
 // Sunucu yanıt vermezse sonsuza kadar beklemek yerine net bir hata ver.
 // Zamanlayıcı mutlaka temizlenir: aksi halde elde kalan timer sonradan
@@ -167,8 +185,25 @@ proc.stdin.write(
   JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized", params: {} }) + "\n"
 );
 
-const toolList = await send("tools/list", {});
-console.log(`Kayıtlı araç sayısı: ${toolList.result.tools.length}`);
+// Araç sayısı index.ts kayıtlarıyla senkron olmalı; drift olursa smoke erken düşer.
+const EXPECTED_TOOL_COUNT = 44;
+const toolList = await withTimeout(send("tools/list", {}), 60_000, "tools/list");
+const tools = toolList?.result?.tools;
+if (!Array.isArray(tools)) {
+  console.error(
+    `::error title=Smoke could not start::tools/list yanıtı okunamadı: ${JSON.stringify(toolList?.error ?? toolList).slice(0, 200)}`
+  );
+  proc.kill();
+  process.exit(2);
+}
+console.log(`Kayıtlı araç sayısı: ${tools.length}`);
+if (tools.length !== EXPECTED_TOOL_COUNT) {
+  console.error(
+    `::error title=Tool count mismatch::Beklenen ${EXPECTED_TOOL_COUNT} araç, sunucuda ${tools.length} var. src/index.ts kayıtlarını ve EXPECTED_TOOL_COUNT değerini güncelleyin.`
+  );
+  proc.kill();
+  process.exit(2);
+}
 
 const results = [];
 for (const c of selected) {
@@ -180,10 +215,20 @@ for (const c of selected) {
   while (attempt < 2 && !ok) {
     attempt++;
     const started = Date.now();
-    const res = await send("tools/call", { name: c.name, arguments: c.args });
+    let res;
+    try {
+      res = await withTimeout(
+        send("tools/call", { name: c.name, arguments: c.args }),
+        60_000,
+        `${c.name} tools/call`
+      );
+    } catch (err) {
+      res = { error: { message: err instanceof Error ? err.message : String(err) } };
+    }
     ms = Date.now() - started;
     const text = res.result?.content?.[0]?.text ?? JSON.stringify(res.error ?? res.result);
-    ok = !res.result?.isError;
+    // JSON-RPC seviyesindeki hatalar (bilinmeyen araç, çökme vb.) da başarısız sayılır.
+    ok = !res.result?.isError && !res.error;
     if (!ok) {
       lastError = text.replace(/\s+/g, " ").slice(0, 130);
       if (attempt < 2) {
@@ -192,9 +237,6 @@ for (const c of selected) {
       }
     }
   }
-
-  // Rate-limit'li kaynaklar (CoinGecko) için vakalar arası kısa bekleme
-  await sleep(400);
 
   results.push({ ...c, ok, ms, attempts: attempt, error: lastError });
 

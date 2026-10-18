@@ -73,12 +73,14 @@ export function registerAnalyzePortfolio(
         // TRY → USD dönüşümü için anlık kur. İstek kapsamında YEREL tutulur; modül
         // düzeyinde global olsaydı eşzamanlı iki analiz birbirinin kurunu ezerdi.
         let usdTryRate = 1;
+        let fxUnavailable = false;
         if (symbols.some((s) => s !== "USDTRY=X")) {
           try {
             const rateQ = await deps.fetchQuote("USDTRY=X");
             if (rateQ?.regularMarketPrice) usdTryRate = rateQ.regularMarketPrice;
+            else fxUnavailable = true;
           } catch {
-            /* kura erişilemezse oran 1 varsayılır */
+            fxUnavailable = true;
           }
         }
         const toUsd = (p: { currency?: string; price: number }, overridePrice?: number): number => {
@@ -112,6 +114,14 @@ export function registerAnalyzePortfolio(
             marketChangePercent: q.regularMarketChangePercent ?? null,
           };
         });
+
+        // Kur alınamadıysa TRY pozisyonlu toplamlar ~49 kat şaşabilir; sessizce 1
+        // varsaymak yerine hatayı açıkça bildir (TRY olmayan portföyler etkilenmez).
+        if (fxUnavailable && rich.some((p) => p.currency === "TRY")) {
+          return errorResponse(
+            "USD/TRY kuru alınamadı; TRY cinsinden pozisyonlar nedeniyle portföy değeri güvenilir hesaplanamaz. Lütfen tekrar deneyin."
+          );
+        }
 
         const totalUsd = rich.reduce((s, p) => s + toUsd(p) * p.quantity, 0);
         const lastUsd = rich.reduce((s, p) => s + toUsd(p, p.previousClose) * p.quantity, 0);

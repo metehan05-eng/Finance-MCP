@@ -49,6 +49,19 @@ test("ROE ve temettü verimi yüzdeye çevrilir", () => {
   assert.equal(row.dividendYield, 0.51);
 });
 
+test("sıfır ROE/temettü verimi null değil 0 döner", () => {
+  const row = buildRow(
+    "X",
+    {},
+    {
+      financialData: { returnOnEquity: 0 },
+      summaryDetail: { dividendYield: 0 },
+    }
+  );
+  assert.equal(row.returnOnEquity, 0);
+  assert.equal(row.dividendYield, 0);
+});
+
 test("sıralamada null değerler her zaman sona gider", () => {
   const rows: ComparisonRow[] = [
     { ...buildRow("A", {}, {}), price: null },
