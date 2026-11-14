@@ -49,7 +49,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "fast-xml-parser": "^4.4.1",
     "yahoo-finance2": "^4.0.3",
     "zod": "^3.23.8"
