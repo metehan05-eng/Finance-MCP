@@ -31,7 +31,7 @@ test("katalog: her kayıtlı araç katalogda tam olarak bir kez yer alır", () =
   assert.deepEqual(missing, [], `katalogda eksik araçlar: ${missing.join(", ")}`);
   assert.deepEqual(stale, [], `katalogda kayıtlı olmayan araç: ${stale.join(", ")}`);
   assert.equal(new Set(catalogNames).size, catalogNames.length, "katalogda yinelenen araç adı var");
-  assert.equal(registered.length, 44, "kayıtlı araç sayısı 44 olmalı");
+  assert.equal(registered.length, 51, "kayıtlı araç sayısı 51 olmalı");
 });
 
 test("katalog: her giriş açıklama ve örnek içerir", () => {
@@ -71,6 +71,6 @@ test("katalog kaynağı TOOL_CATALOG içeriğini döndürür", async () => {
 
   const res = await captured.handler!({ href: "finans://tools/catalog" });
   const data = JSON.parse(res.contents[0].text);
-  assert.equal(data.toolCount, 44);
-  assert.equal(data.tools.length, 44);
+  assert.equal(data.toolCount, 51);
+  assert.equal(data.tools.length, 51);
 });

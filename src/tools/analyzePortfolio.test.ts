@@ -5,6 +5,7 @@ import {
   weightedBeta,
   concentration,
   registerAnalyzePortfolio,
+  computeHistoricalRisk,
   type PortfolioDeps,
 } from "./analyzePortfolio.js";
 
@@ -128,6 +129,8 @@ test("getiri yalnızca maliyeti bilinen pozisyonlar üzerinden hesaplanır", asy
       )) as any,
     fetchQuote: (async () => undefined) as any,
     fetchQuoteSummary: (async () => ({})) as any,
+    fetchOhlc: (async () => ({ rows: [] })) as any,
+    tryBoth: (async () => ({ rows: [] })) as any,
   };
   registerAnalyzePortfolio(server, deps);
 
@@ -157,6 +160,8 @@ test("maliyet verilmezse getiri alanları null olur", async () => {
     ]) as any,
     fetchQuote: (async () => undefined) as any,
     fetchQuoteSummary: (async () => ({})) as any,
+    fetchOhlc: (async () => ({ rows: [] })) as any,
+    tryBoth: (async () => ({ rows: [] })) as any,
   };
   registerAnalyzePortfolio(server, deps);
 
@@ -186,6 +191,8 @@ test("kur alınamazsa TRY pozisyonlu portföy hata döner (1 varsayılmaz)", asy
       throw new Error("network down");
     }) as any,
     fetchQuoteSummary: (async () => ({})) as any,
+    fetchOhlc: (async () => ({ rows: [] })) as any,
+    tryBoth: (async () => ({ rows: [] })) as any,
   };
   registerAnalyzePortfolio(server, deps);
 
@@ -208,6 +215,8 @@ test("kur alınamasa bile TRY olmayan portföy hesaplanmaya devam eder", async (
       throw new Error("network down");
     }) as any,
     fetchQuoteSummary: (async () => ({})) as any,
+    fetchOhlc: (async () => ({ rows: [] })) as any,
+    tryBoth: (async () => ({ rows: [] })) as any,
   };
   registerAnalyzePortfolio(server, deps);
 
@@ -219,4 +228,67 @@ test("kur alınamasa bile TRY olmayan portföy hesaplanmaya devam eder", async (
 
   assert.equal(out.isError, undefined);
   assert.equal(data.portfolioValueUsd, 1000);
+});
+
+// --- Geçmiş seriden risk metrikleri ---
+
+function syntheticSeries(n: number, fn: (i: number) => number): Map<string, number> {
+  const m = new Map<string, number>();
+  for (let i = 0; i < n; i++) {
+    const d = new Date(Date.UTC(2025, 0, 1 + i)).toISOString().slice(0, 10);
+    m.set(d, fn(i));
+  }
+  return m;
+}
+
+test("geçmiş seriden volatilite, getiri, Sharpe ve maksimum düşüş hesaplanır", () => {
+  const closesBySymbol = new Map<string, Map<string, number>>([
+    ["A", syntheticSeries(31, (i) => 100 * Math.pow(1.01, i))],
+    ["B", syntheticSeries(31, (i) => 100 * (1 + 0.05 * Math.sin(i / 2)))],
+  ]);
+  const risk = computeHistoricalRisk({
+    weights: new Map([
+      ["A", 0.6],
+      ["B", 0.4],
+    ]),
+    closesBySymbol,
+    fxUsdTry: null,
+    trySymbols: new Set(),
+    riskFreeRatePct: 10,
+  });
+
+  assert.ok(risk);
+  assert.equal(risk.period, "1y");
+  assert.equal(risk.dataPoints, 31);
+  assert.ok(risk.annualizedVolatility > 0);
+  assert.ok(risk.maxDrawdown <= 0);
+  assert.ok(risk.sharpeRatio !== null);
+});
+
+test("TRY varlıklar USD'ye çevrilerek hesaplanır", () => {
+  const closes = syntheticSeries(31, (i) => 100 * Math.pow(1.001, i));
+  const fx = syntheticSeries(31, () => 10);
+  const risk = computeHistoricalRisk({
+    weights: new Map([["X", 1]]),
+    closesBySymbol: new Map([["X", closes]]),
+    fxUsdTry: fx,
+    trySymbols: new Set(["X"]),
+    riskFreeRatePct: 0,
+  });
+
+  assert.ok(risk);
+  assert.equal(risk.dataPoints, 31);
+  assert.ok((risk.annualizedReturn as number) > 0);
+});
+
+test("yeterli ortak veri yoksa null döner", () => {
+  const risk = computeHistoricalRisk({
+    weights: new Map([["A", 1]]),
+    closesBySymbol: new Map([["A", syntheticSeries(10, (i) => 100 + i)]]),
+    fxUsdTry: null,
+    trySymbols: new Set(),
+    riskFreeRatePct: 0,
+  });
+
+  assert.equal(risk, null);
 });

@@ -313,6 +313,21 @@ export async function fetchQuoteSummary(
 }
 
 /**
+ * Opsiyon zincirini (calls/puts, vade tarihleri) önbellek + yeniden deneme ile alır.
+ * `date` verilmezse Yahoo'nun en yakın vadesi döner.
+ */
+export async function fetchOptions(symbol: string, date?: string): Promise<any> {
+  const yf = await getYahoo();
+  const key = `options:${symbol}:${date ?? ""}`;
+  return cacheFetch(key, QUOTE_TTL, async () => {
+    return withRetry(() => yf.options(symbol, date ? { date } : {}), {
+      attempts: 2,
+      label: `options ${symbol}`,
+    });
+  });
+}
+
+/**
  * Önce doğrudan (küresel), sonuç yoksa BIST (`.IS`) uzantısıyla dener.
  * Tek denemenin başarısızlığı diğer denemeyi engellemez.
  */

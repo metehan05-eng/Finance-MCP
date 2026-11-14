@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
+import { fetchQuote } from "../utils/yahoo.js";
 
 export function registerGetBistPrice(server: McpServer) {
   server.tool(
@@ -18,11 +19,8 @@ export function registerGetBistPrice(server: McpServer) {
       const query = `${ticker}.IS`;
 
       try {
-        // yahoo-finance2 v4: default export is the YahooFinance class
-        const { default: YahooFinance } = await import("yahoo-finance2");
-        const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
-
-        const quote: any = await yf.quote(query);
+        // Ortak singleton + önbellek + yeniden deneme (rate-limit dostu).
+        const quote: any = await fetchQuote(query);
 
         if (!quote || quote.regularMarketPrice === undefined || quote.regularMarketPrice === null) {
           return errorResponse(

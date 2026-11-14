@@ -1,21 +1,138 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
-import { fetchQuotes, fetchQuote, fetchQuoteSummary } from "../utils/yahoo.js";
-import { round } from "../utils/financeMath.js";
+import { fetchQuotes, fetchQuote, fetchQuoteSummary, fetchOhlc, tryBoth } from "../utils/yahoo.js";
+import { commonDates } from "./backtestPortfolio.js";
+import { round, stdev, maxDrawdown } from "../utils/financeMath.js";
 
 /** Test edilebilirlik için dış bağımlılıklar; varsayılanlar gerçek kaynaklardır. */
 export interface PortfolioDeps {
   fetchQuotes: typeof fetchQuotes;
   fetchQuote: typeof fetchQuote;
   fetchQuoteSummary: typeof fetchQuoteSummary;
+  fetchOhlc: typeof fetchOhlc;
+  tryBoth: typeof tryBoth;
 }
 
 export const DEFAULT_PORTFOLIO_DEPS: PortfolioDeps = {
   fetchQuotes,
   fetchQuote,
   fetchQuoteSummary,
+  fetchOhlc,
+  tryBoth,
 };
+
+/** Geçmiş serilerden hesaplanan portföy risk metrikleri (tüm oranlar kesir). */
+export interface HistoricalRiskMetrics {
+  period: "1y";
+  interval: "1d";
+  dataPoints: number;
+  startDate: string;
+  endDate: string;
+  annualizedVolatility: number;
+  annualizedReturn: number;
+  sharpeRatio: number | null;
+  maxDrawdown: number;
+}
+
+export interface HistoricalRiskInput {
+  /** Sembol → güncel portföy ağırlığı (toplamı ~1). */
+  weights: Map<string, number>;
+  /** Sembol → tarih (YYYY-MM-DD) → yerel kapanış. */
+  closesBySymbol: Map<string, Map<string, number>>;
+  /** TRY cinsinden kapanışları USD'ye çevirmek için USD/TRY serisi. */
+  fxUsdTry: Map<string, number> | null;
+  /** USD'ye çevrilmesi gereken TRY sembolleri. */
+  trySymbols: Set<string>;
+  riskFreeRatePct: number;
+  periodsPerYear?: number;
+  minPoints?: number;
+}
+
+/** Bir FX serisinde verilen tarihe en yakın önceki kuru döndürür. */
+function rateAt(fx: Map<string, number>, date: string): number | null {
+  if (fx.has(date)) return fx.get(date) as number;
+  let best: string | null = null;
+  for (const key of fx.keys()) {
+    if (key <= date && (best === null || key > best)) best = key;
+  }
+  return best === null ? null : (fx.get(best) as number);
+}
+
+/**
+ * Güncel ağırlıklarla, USD cinsinden günlük portföy getirilerinden yıllık
+ * volatilite/getiri, Sharpe ve maksimum düşüş hesaplar. Sabit varsayım yoktur.
+ * Yeterli ortak geçmiş yoksa `null` döner.
+ */
+export function computeHistoricalRisk(input: HistoricalRiskInput): HistoricalRiskMetrics | null {
+  const { weights, closesBySymbol, fxUsdTry, trySymbols, riskFreeRatePct } = input;
+  const periods = input.periodsPerYear ?? 252;
+  const minPoints = input.minPoints ?? 20;
+
+  const usdCloses = new Map<string, Map<string, number>>();
+  for (const [symbol, local] of closesBySymbol) {
+    const weight = weights.get(symbol) ?? 0;
+    if (weight <= 0) continue;
+    const converted = new Map<string, number>();
+    for (const [date, close] of local) {
+      if (!Number.isFinite(close) || close <= 0) continue;
+      if (trySymbols.has(symbol)) {
+        if (!fxUsdTry) return null;
+        const rate = rateAt(fxUsdTry, date);
+        if (rate === null || rate <= 0) continue;
+        converted.set(date, close / rate);
+      } else {
+        converted.set(date, close);
+      }
+    }
+    if (converted.size > 0) usdCloses.set(symbol, converted);
+  }
+
+  if (usdCloses.size === 0) return null;
+
+  const dates = commonDates([...usdCloses.values()]).sort();
+  if (dates.length < minPoints + 1) return null;
+
+  const symbols = [...usdCloses.keys()];
+  const weightSum = symbols.reduce((a, s) => a + (weights.get(s) ?? 0), 0);
+  if (weightSum <= 0) return null;
+  const normalized = new Map(symbols.map((s) => [s, (weights.get(s) ?? 0) / weightSum]));
+
+  const returns: number[] = [];
+  for (let i = 1; i < dates.length; i++) {
+    let r = 0;
+    for (const s of symbols) {
+      const series = usdCloses.get(s) as Map<string, number>;
+      const prev = series.get(dates[i - 1]) as number;
+      const cur = series.get(dates[i]) as number;
+      r += (normalized.get(s) as number) * (cur / prev - 1);
+    }
+    returns.push(r);
+  }
+
+  const values: number[] = [1];
+  for (const r of returns) values.push(values[values.length - 1] * (1 + r));
+  const finalValue = values[values.length - 1];
+  if (!(finalValue > 0)) return null;
+
+  const annualizedVol = stdev(returns) * Math.sqrt(periods);
+  const years = returns.length / periods;
+  const annualizedReturn = Math.pow(finalValue, 1 / years) - 1;
+  const rf = riskFreeRatePct / 100;
+  const sharpe = annualizedVol > 0 ? (annualizedReturn - rf) / annualizedVol : null;
+
+  return {
+    period: "1y",
+    interval: "1d",
+    dataPoints: dates.length,
+    startDate: dates[0],
+    endDate: dates[dates.length - 1],
+    annualizedVolatility: annualizedVol,
+    annualizedReturn,
+    sharpeRatio: sharpe,
+    maxDrawdown: maxDrawdown(values).maxDrawdown,
+  };
+}
 
 /**
  * Portföy analizi: giriş, getiri, risk, Sharp oranı ve katkı payları.
@@ -157,12 +274,60 @@ export function registerAnalyzePortfolio(
             p.cost != null && p.cost > 0 ? round(((p.price - p.cost) / p.cost) * 100) : null,
         }));
 
-        // Risk / getiri tahmini: ağırlıklı ortalama + Sharp
-        const weights = rich.map((p) => (toUsd(p) * p.quantity) / totalUsd);
-        const impliedVol = weightedRisk(weights);
-        const annReturn = weightedReturnEstimate(weights);
-        const rf = riskFreeRatePct / 100;
-        const sharpe = impliedVol > 0 ? (annReturn - rf) / impliedVol : null;
+        // Risk / getiri: güncel ağırlıklarla geçmiş günlük USD getirilerinden.
+        const weightBySymbol = new Map<string, number>();
+        if (totalUsd > 0) {
+          for (const p of rich) {
+            const w = (toUsd(p) * p.quantity) / totalUsd;
+            weightBySymbol.set(p.symbol, (weightBySymbol.get(p.symbol) ?? 0) + w);
+          }
+        }
+
+        let historicalRisk: HistoricalRiskMetrics | null = null;
+        let riskNote = "Güncel portföy değeri sıfır olduğu için risk metrikleri hesaplanamadı.";
+        if (totalUsd > 0) {
+          try {
+            const closesBySymbol = new Map<string, Map<string, number>>();
+            for (const symbol of new Set(rich.map((p) => p.symbol))) {
+              try {
+                const chart = await deps.tryBoth(symbol, "1y", "1d");
+                const closes = new Map<string, number>();
+                for (const row of chart.rows) {
+                  if (typeof row.close === "number") closes.set(row.date.slice(0, 10), row.close);
+                }
+                if (closes.size >= 21) closesBySymbol.set(symbol, closes);
+              } catch {
+                // Tek sembolün geçmişi alınamazsa diğerleriyle devam et.
+              }
+            }
+
+            const trySymbols = new Set(
+              rich.filter((p) => p.currency === "TRY").map((p) => p.symbol)
+            );
+            let fxUsdTry: Map<string, number> | null = null;
+            if (trySymbols.size > 0) {
+              const fx = await deps.fetchOhlc("USDTRY=X", { period: "1y", interval: "1d" });
+              fxUsdTry = new Map(
+                fx.rows
+                  .filter((r) => typeof r.close === "number")
+                  .map((r) => [r.date.slice(0, 10), r.close as number])
+              );
+            }
+
+            historicalRisk = computeHistoricalRisk({
+              weights: weightBySymbol,
+              closesBySymbol,
+              fxUsdTry,
+              trySymbols,
+              riskFreeRatePct,
+            });
+            riskNote = historicalRisk
+              ? "Güncel ağırlıklarla son 1 yılın günlük USD getirilerinden hesaplanmıştır; işlem maliyeti ve vergi içermez."
+              : "Yeterli ortak geçmiş fiyat verisi bulunamadı; portföy riski hesaplanamadı.";
+          } catch (err) {
+            riskNote = `Geçmiş fiyat serisi alınamadı: ${err instanceof Error ? err.message : String(err)}`;
+          }
+        }
 
         // Para birimi ve sektör dağılımı
         const byCurrency = aggregate(
@@ -235,12 +400,25 @@ export function registerAnalyzePortfolio(
                   unrealizedGainPct: gainPct != null ? round(gainPct) : null,
                   note: "TRY cinsinden pozisyonlar güncel USDTRY kuruyla ABD dolarına çevrilerek toplanmıştır. Portföy farklı para birimleri içeriyorsa bu bir yaklaşımdır.",
                   riskFreeRateUsed: `${riskFreeRatePct}% yıllık`,
-                  riskMetrics: {
-                    impliedVolatilityPct: round(impliedVol * 100),
-                    expectedAnnualReturnPct: round(annReturn * 100),
-                    sharpeRatio: sharpe != null ? round(sharpe, 3) : null,
-                    note: "Risk metrikleri pozisyon ağırlıklarına dayalı yaklaşıktır; kesin değerler için geçmiş getiri serisi kullanın.",
-                  },
+                  riskMetrics: historicalRisk
+                    ? {
+                        method: "historical",
+                        period: historicalRisk.period,
+                        interval: historicalRisk.interval,
+                        dataPoints: historicalRisk.dataPoints,
+                        startDate: historicalRisk.startDate,
+                        endDate: historicalRisk.endDate,
+                        annualizedVolatilityPct: round(historicalRisk.annualizedVolatility * 100),
+                        annualizedReturnPct: round(historicalRisk.annualizedReturn * 100),
+                        sharpeRatio:
+                          historicalRisk.sharpeRatio != null
+                            ? round(historicalRisk.sharpeRatio, 3)
+                            : null,
+                        maxDrawdownPct: round(historicalRisk.maxDrawdown * 100),
+                        note: riskNote,
+                      }
+                    : null,
+                  riskMetricsNote: historicalRisk ? null : riskNote,
                   allocation: {
                     positions: positionsDetail,
                     byCurrency,
@@ -322,23 +500,4 @@ function aggregate(items: Array<{ key: string; value: number }>): Record<string,
   }
   for (const k of Object.keys(out)) out[k] = round(out[k], 2) ?? 0;
   return out;
-}
-
-/** Hazır fonksiyon: ağırlıklı volatilite — tek varlık yerine sepet yaklaşımı. */
-function weightedRisk(weights: number[]): number {
-  // Tek başına doğrusal ağırlıklı ters volatilite; düşerken çeşitlendirme
-  const avgFactor = 0.32; // gelişen piyasa hisse sepeti için makul uzun vadeli tahmini volatilite
-  const diversity = 1 - coreDiversity(weights) * 0.25;
-  return avgFactor * diversity;
-}
-
-function weightedReturnEstimate(_weights: number[]): number {
-  const equityPremiumBase = 0.12; // gelişen piyasa uzun vadeli beklenen reel+enflasyon getirisi
-  return equityPremiumBase;
-}
-
-function coreDiversity(weights: number[]): number {
-  if (weights.length <= 1) return 0;
-  const max = Math.max(...weights);
-  return max;
 }

@@ -68,13 +68,22 @@ import { registerGetSectorPerformance } from "./tools/getSectorPerformance.js";
 import { registerGetWatchlist } from "./tools/getWatchlist.js";
 import { registerGetCryptoMovers } from "./tools/getCryptoMovers.js";
 import { registerSaveWatchlist } from "./tools/saveWatchlist.js";
+
+// Modül 12: Risk, Sahiplik & Türev
+import { registerGetRiskMetrics } from "./tools/getRiskMetrics.js";
+import { registerGetSeasonality } from "./tools/getSeasonality.js";
+import { registerGetInsiderTransactions } from "./tools/getInsiderTransactions.js";
+import { registerGetInstitutionalHolders } from "./tools/getInstitutionalHolders.js";
+import { registerGetEtfHoldings } from "./tools/getEtfHoldings.js";
+import { registerGetOptionsChain } from "./tools/getOptionsChain.js";
+import { registerGetRebalancingPlan } from "./tools/getRebalancingPlan.js";
 import { registerFinancePrompts } from "./utils/financePrompts.js";
 import { loadWatchlist, watchlistPath } from "./utils/watchlistStore.js";
 
 async function main() {
   const server = new McpServer({
     name: "finans-mcp",
-    version: "1.6.1",
+    version: "1.7.0",
   });
 
   // Döviz & para birimi (Frankfurter / ECB)
@@ -153,6 +162,15 @@ async function main() {
   registerSaveWatchlist(server); // Kalıcı izleme listesi kaydetme
   registerGetCryptoMovers(server); // Kripto en çok yükselen/düşen
 
+  // --- Modül 12: Risk, Sahiplik & Türev ---
+  registerGetRiskMetrics(server); // VaR/CVaR, drawdown, Sharpe/Sortino/Calmar
+  registerGetSeasonality(server); // Ay bazlı mevsimsel performans
+  registerGetInsiderTransactions(server); // Insider alım-satımları
+  registerGetInstitutionalHolders(server); // Kurumsal/fon sahipliği
+  registerGetEtfHoldings(server); // ETF/fon içeriği, sektör dağılımı
+  registerGetOptionsChain(server); // Opsiyon zinciri özeti
+  registerGetRebalancingPlan(server); // Hedef ağırlıklara göre al/sat planı
+
   // Araç kataloğu kaynağı (istemciler doğru aracı seçebilsin diye)
   registerToolCatalog(server);
 
@@ -198,7 +216,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error("finans-mcp v1.6.1 — stdio üzerinde çalışıyor. (44 tool, 4 prompt aktif)");
+  console.error("finans-mcp v1.7.0 — stdio üzerinde çalışıyor. (51 tool, 4 prompt aktif)");
 }
 
 main().catch((error) => {

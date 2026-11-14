@@ -18,6 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      # Adım düzeyinde `if: env.NPM_TOKEN != ''` çalışsın diye iş düzeyinde tanımlanır.
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
       - name: Checkout
@@ -50,8 +53,6 @@ jobs:
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
           npm publish --access public
           rm -f ~/.npmrc
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2

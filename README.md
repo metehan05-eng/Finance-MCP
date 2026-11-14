@@ -1,124 +1,135 @@
-# Finance-MCP (Global & BIST Finans MCP Server)
+# Finance-MCP (Global & BIST Finance MCP Server)
 
-Türkiye (BIST) ve global finans piyasalarına doğrudan erişim sağlayan açık kaynaklı bir **Model Context Protocol (MCP)** sunucusu. 
+An open-source **Model Context Protocol (MCP)** server providing direct access to Turkish (BIST) and global financial markets. 
 
-**Cursor, Claude Desktop ve Claude Code** gibi yapay zeka araçlarının; BIST hisselerine, küresel hisse senetlerine (NVIDIA, Apple, Tesla vb.), kripto para fiyatlarına, döviz kurlarına, enflasyon verilerine, makroekonomik göstergelere, **teknik analiz indikatörlerine**, portföy backtest'ine, VİOP/TEFAS verilerine ve finans haberlerine canlı erişmesini sağlar.
+**It lets AI tools such as Cursor, Claude Desktop, and Claude Code access real-time data including BIST stocks, global stocks (NVIDIA, Apple, Tesla, etc.), cryptocurrency prices, exchange rates, inflation data, macroeconomic indicators, technical analysis indicators, portfolio backtesting, VIOP/TEFAS data, and financial news.**
 
-> 💡 **Tüm veri kaynakları tamamen ücretsizdir ve herhangi bir API Key gerektirmez!**
+> 💡 **All data sources are completely free and do not require any API keys!**
 
 ---
 
-## 🚀 Sunulan Araçlar (44 Araç)
+## 🚀 Available Tools (51 Tools)
 
-### Döviz & Para Birimi
-| Araç | Açıklama | Kaynak |
+### Currency & Exchange
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_exchange_rate` | İki para birimi arasındaki güncel veya geçmiş döviz kuru (Örn: `USD` -> `TRY`) | Frankfurter (ECB) |
-| `convert_currency` | Belirli bir miktarı güncel kur üzerinden başka bir para birimine çevirme | Frankfurter (ECB) |
-| `get_historical_rate` | 1999'dan itibaren belirli bir tarihteki döviz kuru | Frankfurter (ECB) |
-| `get_tcmb_rate` | TCMB resmi bülteninden alış/satış kurları | TCMB XML |
+| `get_exchange_rate` | Current or historical exchange rate between two currencies (e.g., `USD` -> `TRY`) | Frankfurter (ECB) |
+| `convert_currency` | Convert a specific amount to another currency using the current exchange rate | Frankfurter (ECB) |
+| `get_historical_rate` | Exchange rate on a specific date from 1999 onwards | Frankfurter (ECB) |
+| `get_tcmb_rate` | Buying/selling rates from the official CBRT bulletin | TCMB XML |
 
-### Borsa İstanbul & Küresel Hisse
-| Araç | Açıklama | Kaynak |
+### Borsa Istanbul & Global Stocks
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_bist_price` | BIST hisse senetlerinin güncel fiyatı, piyasa değeri ve 52h zirve/dip verileri (Örn: `THYAO`, `ASELS`) | Yahoo Finance |
-| `get_global_stock_price` | Dünyadaki tüm hisseler (AAPL, NVDA, TSLA), endeksler (S&P 500, NASDAQ) ve ETF'ler | Yahoo Finance |
-| `get_stock_history` | Bir hissenin geçmiş OHLC (grafik) verisi — teknik analiz için (`THYAO.IS`, `AAPL`, `NVDA`) | Yahoo Finance |
-| `search_symbol` | İsme göre sembol (ticker) arama — `"ASELSAN"` → `ASELS.IS` | Yahoo Finance |
-| `get_bist_indices` | BIST endeksleri + sektör kırılımı: sektörler benchmark (XU100) bazında sıralanır (`XBANK`, `XUTEK`, `XGMYO`, `XILTM`, `XUSIN`) | Yahoo Finance |
+| `get_bist_price` | Current price, market cap, and 52-week high/low data for BIST stocks (e.g., `THYAO`, `ASELS`) | Yahoo Finance |
+| `get_global_stock_price` | Stocks from around the world (AAPL, NVDA, TSLA), indices (S&P 500, NASDAQ), and ETFs | Yahoo Finance |
+| `get_stock_history` | Historical OHLC (chart) data for a stock — for technical analysis (`THYAO.IS`, `AAPL`, `NVDA`) | Yahoo Finance |
+| `search_symbol` | Search for ticker symbol by company name — `"ASELSAN"` → `ASELS.IS` | Yahoo Finance |
+| `get_bist_indices` | BIST indices + sector breakdown: sectors ranked by benchmark (XU100) (`XBANK`, `XUTEK`, `XGMYO`, `XILTM`, `XUSIN`) | Yahoo Finance |
 
-### Kripto Para
-| Araç | Açıklama | Kaynak |
+### Cryptocurrency
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_crypto_price` | Kripto paraların seçilen para birimi cinsinden güncel fiyatı, piyasa değeri ve 24s hacmi | CoinGecko |
-| `get_multi_crypto_price` | Birden fazla kripto paranın fiyatını tek sorguda getirme | CoinGecko |
-| `get_crypto_history` | Kripto geçmiş OHLC verisi (USD veya TRY) — `bitcoin`, `ethereum`, `solana` | Yahoo Finance |
-| `get_crypto_movers` | 24 saat / 7 gün en çok yükselen ve düşen coinler, piyasa medyanı, piyasa değeri filtresi | CoinGecko |
+| `get_crypto_price` | Current price, market cap, and 24h volume of cryptocurrencies in selected currency | CoinGecko |
+| `get_multi_crypto_price` | Get prices of multiple cryptocurrencies in a single query | CoinGecko |
+| `get_crypto_history` | Historical OHLC data for cryptocurrencies (USD or TRY) — `bitcoin`, `ethereum`, `solana` | Yahoo Finance |
+| `get_crypto_movers` | Top gainers and losers in 24h/7d, market median, market cap filter | CoinGecko |
 
-### Emtia
-| Araç | Açıklama | Kaynak |
+### Commodities
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_commodity_price` | Altın, gümüş, petrol (WTI/Brent), doğalgaz, bakır, platin vb. emtia fiyatları | Yahoo Finance |
+| `get_commodity_price` | Prices of gold, silver, oil (WTI/Brent), natural gas, copper, platinum, etc. | Yahoo Finance |
 
-### Makroekonomi
-| Araç | Açıklama | Kaynak |
+### Macroeconomics
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_inflation_data` | Türkiye TÜFE enflasyonu (yıllık, Dünya Bankası) | World Bank / TÜİK |
-| `get_macro_indicators` | GSYİH büyümesi, kişi başı GSYİH, enflasyon, işsizlik, cari denge, rezervler (ülke bazlı) | World Bank + FRED |
-| `get_policy_rate` | TCMB politika faizi (1 hafta repo) ve geçmiş faiz değişimleri | TCMB |
-| `get_gov_bond_yields` | 10 yıllık & gösterge devlet tahvili faizleri | doviz.com |
+| `get_inflation_data` | Turkey CPI inflation (annual, World Bank) | World Bank / TÜİK |
+| `get_macro_indicators` | GDP growth, GDP per capita, inflation, unemployment, current account, reserves (by country) | World Bank + FRED |
+| `get_policy_rate` | CBRT policy rate (1-week repo) and historical rate changes | TCMB |
+| `get_gov_bond_yields` | 10-year and benchmark government bond yields | doviz.com |
 
-### Yatırım Analizi
-| Araç | Açıklama | Kaynak |
+### Investment Analysis
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_fundamentals` | F/K, EPS, PD/DD, temettü verimi, marjlar, beta, analist hedefleri | Yahoo Finance |
-| `get_correlation` | İki varlık arasındaki fiyat/getiri korelasyonu + yıllık getiri & volatilite | Yahoo Finance |
-| `analyze_portfolio` | Portföy değeri, günlük değişim, ağırlıklar, risk/Sharp tahmini, para birimi dağılımı + **sektör/endüstri kırılımı, ağırlıklı beta ve yoğunlaşma uyarısı** | Yahoo Finance |
+| `get_fundamentals` | P/E, EPS, P/B, dividend yield, margins, beta, analyst targets | Yahoo Finance |
+| `get_correlation` | Price/return correlation between two assets + annual return & volatility | Yahoo Finance |
+| `analyze_portfolio` | Portfolio value, daily change, weights, historical volatility/return/Sharpe/max drawdown, currency distribution + **sector/industry breakdown, weighted beta, and concentration warnings** | Yahoo Finance |
 
-### BIST'e Özel
-| Araç | Açıklama | Kaynak |
+### BIST Specific
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_fund_price` | TEFAS yatırım fonu güncel fiyatı (NAV) ve son dönem verisi | TEFAS |
-| `get_viop_quote` | VİOP vadeli kontrat fiyat, alış/satış ve hacim bilgileri | OYAK Yatırım |
-| `get_market_summary` | BIST piyasa özeti: ana endeksler + banka/sanayi watchlist'i | Yahoo Finance |
+| `get_fund_price` | TEFAS mutual fund current price (NAV) and recent performance data | TEFAS |
+| `get_viop_quote` | VIOP futures contract price, bid/ask, and volume data | OYAK Yatırım |
+| `get_market_summary` | BIST market summary: main indices + bank/industry watchlist | Yahoo Finance |
 
-### Haber & Takvim
-| Araç | Açıklama | Kaynak |
+### News & Calendar
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_economic_calendar` | Küresel ekonomik takvim (faiz kararları, enflasyon, istihdam...) — ülke/etki filtresi | ForexFactory |
-| `get_financial_news` | Hisse/endeks/kripto/döviz hakkında güncel haber başlıkları | Yahoo Finance RSS |
+| `get_economic_calendar` | Global economic calendar (rate decisions, inflation, employment, etc.) — country/impact filter | ForexFactory |
+| `get_financial_news` | Latest news headlines on stocks/indices/crypto/FX | Yahoo Finance RSS |
 
-### Teknik Analiz
-| Araç | Açıklama | Kaynak |
+### Technical Analysis
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_technical_indicators` | RSI(14), SMA(20/50/200), EMA(12/26), MACD(12/26/9), Bollinger bantları, ATR(14) + sinyal yorumu | Yahoo Finance + yerel hesaplama |
-| `get_market_movers` | Günün en çok yükselenleri/düşenleri, en aktifler, büyüme teknoloji hisseleri vb. hazır listeler | Yahoo Finance Screener |
-| `get_trending_stocks` | Bölgeye göre en çok trend/ilgi gören hisseler (fiyat ve değişimle) | Yahoo Finance Trending |
+| `get_technical_indicators` | RSI(14), SMA(20/50/200), EMA(12/26), MACD(12/26/9), Bollinger Bands, ATR(14) + signal interpretation | Yahoo Finance + local calculation |
+| `get_market_movers` | Top gainers/losers, most active, growth tech stocks, etc. pre-defined lists | Yahoo Finance Screener |
+| `get_trending_stocks` | Most trending/popular stocks by region (with price and change) | Yahoo Finance Trending |
 
-### Piyasa Göstergeleri & Türkiye
-| Araç | Açıklama | Kaynak |
+### Market Indicators & Turkey
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_market_indicators` | VIX (korku endeksi), ABD 13 hafta/5/10/30 yıl tahvil faizleri, Dolar Endeksi (DXY), getiri eğrisi yorumu | Yahoo Finance |
-| `get_altin_gram_price` | Altın ons (USD) ve gram altın (TRY) fiyatı — 24 ayar ve 22 ayar (ziynet) | Yahoo Finance |
-| `get_tcmb_snapshot` | Türkiye özeti: ana döviz kurları, TCMB politika faizi, ABD 10Y tahvil, gram altın | Yahoo Finance + TCMB |
+| `get_market_indicators` | VIX (fear index), US 13-week/5/10/30-year Treasury yields, Dollar Index (DXY), yield curve interpretation | Yahoo Finance |
+| `get_altin_gram_price` | Gold spot price (USD) and gram gold price (TRY) — 24K and 22K (jewelry) | Yahoo Finance |
+| `get_tcmb_snapshot` | Turkey snapshot: major FX rates, CBRT policy rate, US 10Y Treasury, gram gold | Yahoo Finance + TCMB |
 
-### Gelişmiş Analiz
-| Araç | Açıklama | Kaynak |
+### Advanced Analytics
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `backtest_portfolio` | Portföy backtest: toplam/yıllık getiri, volatilite, maksimum düşüş, Sharpe, varlık katkıları (TRY→USD çevrimi) | Yahoo Finance OHLC |
-| `get_crypto_fear_greed` | Kripto Korku & Açgözlülük Endeksi (0-100) güncel değer ve 30 günlük geçmiş | alternative.me |
-| `get_crypto_market_overview` | Kripto piyasa kapitalizasyonu, 24s hacim/değişim, BTC-ETH dominansı, en çok aranan kriptolar | CoinGecko |
+| `backtest_portfolio` | Portfolio backtest: total/annual return, volatility, maximum drawdown, Sharpe, asset contributions (TRY→USD conversion) | Yahoo Finance OHLC |
+| `get_crypto_fear_greed` | Crypto Fear & Greed Index (0-100) current value and 30-day history | alternative.me |
+| `get_crypto_market_overview` | Crypto market cap, 24h volume/change, BTC-ETH dominance, top trending coins | CoinGecko |
 
-### Temettü, Bilanço & Analist
-| Araç | Açıklama | Kaynak |
+### Dividends, Earnings & Analysts
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_dividend_history` | Temettü geçmişi, yıllık toplamlar, son 12 ay temettü verimi ve ödeme sürekliliği | Yahoo Finance |
-| `get_earnings_info` | Yaklaşan bilanço tarihi, tahmini EPS/ciro aralığı, tahmin edilen büyüme | Yahoo Finance |
-| `get_analyst_consensus` | Analist tavsiye dağılımı, yükseliş yüzdesi, ortalama/düşük/yüksek hedef fiyat | Yahoo Finance |
+| `get_dividend_history` | Dividend history, annual totals, trailing 12-month dividend yield, and payment continuity | Yahoo Finance |
+| `get_earnings_info` | Upcoming earnings date, estimated EPS/revenue range, projected growth | Yahoo Finance |
+| `get_analyst_consensus` | Analyst recommendation distribution, bullish percentage, average/low/high target price | Yahoo Finance |
 
-### Şirket, Karşılaştırma & Sektör
-| Araç | Açıklama | Kaynak |
+### Company, Comparison & Sector
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_company_profile` | Şirket profili: sektör, sanayi, ülke, çalışan sayısı, web sitesi, iş özeti | Yahoo Finance |
-| `compare_stocks` | 2-8 hisseyi fiyat, piyasa değeri, F/K, F/DD, ROE, temettü verimi, 52 hafta, beta ile karşılaştırır | Yahoo Finance |
-| `get_sector_performance` | 11 ABD sektör ETF'i ile dönem getirisi sıralaması, en güçlü/zayıf sektör | Yahoo Finance |
-| `get_watchlist` | 20 sembole kadar izleme listesi: anlık durum, en çok yükselen/düşen. `symbols` verilmezse **kalıcı** listeyi okur | Yahoo Finance |
-| `save_watchlist` | İzleme listesini `~/.finans-mcp/watchlist.json` dosyasına kaydeder (`replace` / `add` / `remove` / `clear`) | Yerel dosya |
+| `get_company_profile` | Company profile: sector, industry, country, employee count, website, business summary | Yahoo Finance |
+| `compare_stocks` | Compare 2-8 stocks by price, market cap, P/E, P/B, ROE, dividend yield, 52-week range, and beta | Yahoo Finance |
+| `get_sector_performance` | Period return ranking across 11 US sector ETFs, strongest/weakest sector | Yahoo Finance |
+| `get_watchlist` | Watchlist of up to 20 symbols: live status, top gainers/losers. Reads the **persistent** list when `symbols` is omitted | Yahoo Finance |
+| `save_watchlist` | Saves the watchlist to `~/.finans-mcp/watchlist.json` (`replace` / `add` / `remove` / `clear`) | Local file |
 
-### Sistem
-| Araç | Açıklama | Kaynak |
+### Risk, Ownership & Derivatives
+| Tool | Description | Source |
 | :--- | :--- | :--- |
-| `get_data_health` | Tüm veri kaynaklarının erişilebilirliği, yanıt süresi, önbellek ve devre kesici durumu (teşhis) | Çoklu kaynak |
+| `get_risk_metrics` | Historical VaR/CVaR, maximum drawdown and recovery, Sharpe/Sortino/Calmar, volatility, skewness/kurtosis | Yahoo Finance OHLC + local calculation |
+| `get_seasonality` | Calendar-month seasonal performance: mean/median return, positive rate, best/worst year | Yahoo Finance OHLC + local calculation |
+| `get_insider_transactions` | Recent insider buys/sells, net insider buying trend, and insider ownership ratio | Yahoo Finance |
+| `get_institutional_holders` | Institutional/fund ownership breakdown, largest institutions, position and change ratios | Yahoo Finance |
+| `get_etf_holdings` | ETF/fund composition: top holdings, sector allocation, expense ratio, and periodic returns | Yahoo Finance |
+| `get_options_chain` | Options chain: available expiries, ATM call/put, open interest, volume, and put/call ratio | Yahoo Finance |
+| `get_rebalancing_plan` | Rebalancing to target weights: buy/sell amount per asset and warnings | Local calculation |
 
-> 📚 İstemciler `finans://tools/catalog` kaynağını okuyarak araç kataloğunu ve örnek soruları görebilir; `finans://watchlist` kaynağı ise `save_watchlist` ile kaydedilmiş kalıcı izleme listesini döndürür.
+### System
+| Tool | Description | Source |
+| :--- | :--- | :--- |
+| `get_data_health` | Availability, response time, cache, and circuit breaker status of all data sources (diagnostics) | Multiple sources |
+
+> 📚 Clients can read the `finans://tools/catalog` resource to see the tool catalog and example questions; the `finans://watchlist` resource returns the persistent watchlist saved via `save_watchlist`.
 >
-> 🧩 **Hazır soru şablonları** (`prompts/list`): `market_morning_brief` (sabah brifingi), `stock_deep_dive` (hisse derinlemesine analiz), `portfolio_review` (portföy değerlendirme), `data_source_diagnosis` (kaynak teşhisi).
+> 🧩 **Ready-made prompt templates** (`prompts/list`): `market_morning_brief`, `stock_deep_dive`, `portfolio_review`, `data_source_diagnosis`.
 
 ---
 
-## 📦 Kurulum
+## 📦 Installation
 
-Node.js (>= 22) yüklü olduğundan emin olun:
+Make sure Node.js (>= 22) is installed:
 
 ```bash
 git clone https://github.com/metehan05-eng/Finance-MCP.git
@@ -127,14 +138,14 @@ npm install
 npm run build
 ```
 
-**Docker ile:**
+**With Docker:**
 
 ```bash
 docker build -t finans-mcp .
 docker run -i --rm finans-mcp
 ```
 
-**Docker'ı MCP istemcisine bağlama (Claude Desktop config):**
+**Connecting Docker to an MCP client (Claude Desktop config):**
 
 ```json
 {
@@ -149,34 +160,34 @@ docker run -i --rm finans-mcp
 
 ---
 
-## 🖥️ Cursor ile Bağlama (2 Kolay Yol)
+## 🖥️ Connecting with Cursor (2 Easy Ways)
 
-### 1. Yol (Otomatik Proje Ayarı - En Kolay)
-Projenin kök dizininde hazır bulunan `.cursor/mcp.json` dosyası sayesinde; bu klasörü Cursor ile açtığınızda **MCP sunucusu otomatik olarak tanınır**:
+### Way 1 (Automatic Project Config - Easiest)
+Thanks to the `.cursor/mcp.json` file included in the project root, the **MCP server is recognized automatically** when you open this folder with Cursor:
 
-1. Cursor'ı açın ve `Finance-MCP` klasörünü açın.
-2. `Ctrl + L` (Mac'te `Cmd + L`) ile Chat'i açın.
-3. Chat kutusunda **Agent** modunu seçin.
+1. Open Cursor and open the `Finance-MCP` folder.
+2. Open Chat with `Ctrl + L` (`Cmd + L` on Mac).
+3. Select **Agent** mode in the chat box.
 
-### 2. Yol (Global Cursor Ayarı)
-Başka projelerde çalışırken de bu sunucuyu kullanmak isterseniz:
-1. Cursor'da sağ üstteki **Ayarlar (Çark ⚙️)** simgesine tıklayın (veya `Ctrl + Shift + J`).
-2. Sol menüden **Features > MCP Servers** bölümüne gelin.
-3. **"+ Add New MCP Server"** butonuna tıklayın:
+### Way 2 (Global Cursor Setting)
+If you want to use this server while working on other projects:
+1. Click the **Settings (Gear ⚙️)** icon in the top right of Cursor (or press `Ctrl + Shift + J`).
+2. Go to **Features > MCP Servers** in the left menu.
+3. Click the **"+ Add New MCP Server"** button:
    * **Name:** `finance-mcp`
    * **Type:** `command`
-   * **Command:** `node /tam/dosya/yolu/Finance-MCP/build/index.js`
+   * **Command:** `node /full/path/to/Finance-MCP/build/index.js`
 
 ---
 
-## 🤖 Claude Desktop ile Bağlama
+## 🤖 Connecting with Claude Desktop
 
-Claude Desktop uygulamasında ayar dosyanızı açın:
+Open your settings file in the Claude Desktop app:
 * **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 * **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 * **Linux:** `~/.config/Claude/claude_desktop_config.json`
 
-Dosyanın içine şu bloğu ekleyin (dosya yolunu kendi sisteminize göre güncelleyin):
+Add the following block to the file (update the path for your system):
 
 ```json
 {
@@ -184,22 +195,22 @@ Dosyanın içine şu bloğu ekleyin (dosya yolunu kendi sisteminize göre günce
     "finance-mcp": {
       "command": "node",
       "args": [
-        "/mutlak/dosya/yolu/Finance-MCP/build/index.js"
+        "/absolute/path/to/Finance-MCP/build/index.js"
       ]
     }
   }
 }
 ```
 
-Claude Desktop uygulamasını yeniden başlatın. Sağ altta çekiç (Tools) simgesinde **44 tool** aktif olarak görünecektir.
+Restart the Claude Desktop app. The hammer (Tools) icon in the bottom right should show **51 tools** active.
 
 ---
 
-## 💻 Claude Code ile Bağlama
+## 💻 Connecting with Claude Code
 
-### Yol 1 — Proje yapılandırması ile (önerilen, otomatik)
+### Way 1 — Project configuration (recommended, automatic)
 
-Depo kökünde `scripts/claude-mcp.mjs` başlatıcısı ve Claude Code'a özel `.mcp.json` bulunur:
+The repo root contains the `scripts/claude-mcp.mjs` launcher and a Claude Code-specific `.mcp.json`:
 
 ```json
 {
@@ -213,96 +224,96 @@ Depo kökünde `scripts/claude-mcp.mjs` başlatıcısı ve Claude Code'a özel `
 }
 ```
 
-1. `npm install && npm run build` (ilk seferde).
-2. Depo kökünde `claude` çalıştırın ve ilk açılışta çıkan **onay** isteminde `finans-mcp` sunucusunu onaylayın.
-3. `/mcp` panelinde `finans-mcp · 44 tools` bağlı görmelisiniz.
+1. `npm install && npm run build` (on first run).
+2. Run `claude` in the repo root and approve the `finans-mcp` server in the **approval** prompt on first launch.
+3. The `/mcp` panel should show `finans-mcp · 51 tools` connected.
 
-Başlatıcı `build/index.js` yoksa otomatik `npm run build` çalıştırır, sunucuyu çocuklar süreç olarak başlatır ve sinyalleri iletir. Onayı sıfırlamak için: `claude mcp reset-project-choices`.
+If `build/index.js` is missing, the launcher runs `npm run build` automatically, starts the server as a child process, and forwards signals. To reset approvals: `claude mcp reset-project-choices`.
 
-### Yol 2 — Manuel ekleme (kişisel/kullanıcı kapsamı)
+### Way 2 — Manual addition (personal/user scope)
 
 ```bash
-# Tüm projelerde (user scope)
-claude mcp add finance-mcp -s user -- node /mutlak/dosya/yolu/Finance-MCP/scripts/claude-mcp.mjs
+# For all projects (user scope)
+claude mcp add finance-mcp -s user -- node /absolute/path/to/Finance-MCP/scripts/claude-mcp.mjs
 
-# Sadece bu proje için (local scope)
-claude mcp add finance-mcp -- node /mutlak/dosya/yolu/Finance-MCP/scripts/claude-mcp.mjs
+# Only for this project (local scope)
+claude mcp add finance-mcp -- node /absolute/path/to/Finance-MCP/scripts/claude-mcp.mjs
 ```
 
-Durumu kontrol etmek için:
+To check status:
 
 ```bash
-claude mcp list        # bağlantı durumu
+claude mcp list        # connection status
 claude mcp get finance-mcp
 ```
 
 ---
 
-## 💬 Örnek Komutlar & Sorular
+## 💬 Example Commands & Questions
 
-Cursor veya Claude'a doğrudan şunları sorabilirsiniz:
+You can ask Cursor or Claude directly:
 
-* *"NVIDIA (NVDA), Apple (AAPL) ve THYAO hisselerini karşılaştıran bir analiz tablosu yap."*
-* *"Bitcoin ve Solana'nın güncel Türk Lirası fiyatları nedir?"*
-* *"250.000 TL ile teknoloji hisseleri ve kriptodan oluşan dengeli bir portföy önerisi simüle et."*
-* *"1500 Euro kaç Türk Lirası ediyor?"*
-* *"BIST'te ASELS ve TUPRS 52 haftalık zirvelerine ne kadar uzaklıkta?"*
-* *"THYAO ve BIST 100 arasındaki korelasyon nedir?"*
-* *"TCMB politika faizi ve son 5 faiz değişikliğini göster."*
-* *"Türkiye'nin GSYİH büyümesi ve işsizlik oranı son 3 yılda nasıl değişti?"*
-* *"Bitcoin'in son 6 aylık grafiğini çiz."*
-* *"Bu portföyü analiz et: 100 adet THYAO.IS (maliyet 280), 500 adet GARAN.IS (maliyet 300), 10 adet AAPL (maliyet 150)."*
-* *"GAF fonunun son haftadaki fiyatını göster."*
-* *"VİOP'taki X10 vadeli kontratının fiyatını göster."*
-* *"THYAO hissesinin son 6 ayının RSI, MACD ve Bollinger değerlerini ve teknik görünümünü söyle."*
-* *"AAPL için 50 ve 200 günlük ortalamaya göre trend yukarı mı aşağı mı?"*
-* *"Bugün ABD borsasını en çok ne taşıyan hisseler hangileri?"*
-* *"Şu an VIX kaç, piyasa korku seviyesinde mi? ABD 10 yıllık tahvil faizi ne kadar?"*
-* *"Bugün gram altın kaç TL?"*
-* *"Türkiye'nin kurları, politika faizi ve tahvil getirisi tek bakışta nasıl?"*
-* *"100 adet THYAO.IS ve 20 adet AAPL'dan oluşan portföyün son 1 yılda getirisi, Sharpe'ı ve maksimum düşüşü ne?"*
-* *"Kripto piyasasında şu an korku mu açgözlülük hâkim?"*
+* *"Build a comparison table for NVIDIA (NVDA), Apple (AAPL), and THYAO stocks."*
+* *"What are the current Turkish lira prices of Bitcoin and Solana?"*
+* *"Simulate a balanced portfolio of tech stocks and crypto with 250,000 TRY."*
+* *"How many Turkish lira is 1,500 euros?"*
+* *"How far are ASELS and TUPRS on BIST from their 52-week highs?"*
+* *"What is the correlation between THYAO and BIST 100?"*
+* *"Show the CBRT policy rate and the last 5 rate changes."*
+* *"How have Turkey's GDP growth and unemployment rate changed over the last 3 years?"*
+* *"Chart Bitcoin's last 6 months."*
+* *"Analyze this portfolio: 100 THYAO.IS (cost 280), 500 GARAN.IS (cost 300), 10 AAPL (cost 150)."*
+* *"Show the price of the GAF fund over the last week."*
+* *"Show the price of the X10 futures contract on VIOP."*
+* *"Tell me the RSI, MACD, and Bollinger values and technical outlook for THYAO over the last 6 months."*
+* *"Is the trend for AAPL up or down relative to its 50- and 200-day averages?"*
+* *"Which stocks drove the US market the most today?"*
+* *"What is VIX right now, is the market in fear territory? What is the US 10-year Treasury yield?"*
+* *"How much is gram gold in TRY today?"*
+* *"How do Turkey's FX rates, policy rate, and bond yield look at a glance?"*
+* *"What are the 1-year return, Sharpe ratio, and maximum drawdown of a portfolio of 100 THYAO.IS and 20 AAPL?"*
+* *"Is fear or greed dominant in the crypto market right now?"*
 
 ---
 
-## 🛠️ Geliştirme
+## 🛠️ Development
 
 ```bash
-npm run dev           # Kod değişikliklerini izler ve otomatik derler
-npm run lint          # ESLint (TypeScript) kontrolü
-npm run format        # Prettier ile kod formatlama
-npm test              # Derleme + birim testler (node --test)
-npm run test:coverage # Birim testler + satır kapsamı raporu
-npm run smoke         # Canlı smoke test (gerçek kaynaklara istek atar, ağ gerekir)
-npm run check         # lint + format:check + test (CI ile aynı)
-npm run inspector     # MCP Inspector ile araçları tarayıcıda görsel test eder
+npm run dev           # Watch for code changes and rebuild automatically
+npm run lint          # ESLint (TypeScript) check
+npm run format        # Format code with Prettier
+npm test              # Build + unit tests (node --test)
+npm run test:coverage # Unit tests + line coverage report
+npm run smoke         # Live smoke test (hits real sources, requires network)
+npm run check         # lint + format:check + test (same as CI)
+npm run inspector     # Visually test tools in the browser with MCP Inspector
 ```
 
-**Test & Kalite:**
-- `src/**/*.test.ts` altında **175 birim test** bulunur: indikatörler, istatistik, Türkçe sayı ayrıştırma, cache/retry/devre kesici mantığı, depolama katmanı ve sahte bağımlılıklarla (DI) araç ağ yolları.
-- `scripts/smoke.mjs` sunucuyu gerçekten başlatıp 22 vakayı canlı kaynaklardan çağırır (toplu hata eşiği: %40; tek kaynak hatası uyarı olarak işaretlenir).
-- GitHub Actions: `ci.yml` her push/PR'da lint + format + derleme + test; `smoke.yml` main'e push'ta ve haftalık canlı test; `release.yml` `v*` etiketinde npm + GitHub release.
+**Test & Quality:**
+- **246 unit tests** live under `src/**/*.test.ts`: indicators, statistics, risk metrics, seasonality, ownership/ETF/options normalization, Turkish number parsing, cache/retry/circuit breaker logic, storage layer, and tool network paths with fake dependencies (DI).
+- `scripts/smoke.mjs` actually boots the server and calls 32 cases against live sources (aggregate failure threshold: 40%; a single source failure is flagged as a warning).
+- GitHub Actions: `ci.yml` runs lint + format + build + tests on every push/PR; `smoke.yml` runs live tests on main pushes and weekly; `release.yml` publishes to npm + GitHub Release on `v*` tags.
 
-**Dayanıklılık:** Tüm kaynak çağrıları kaynak bazlı TTL'li bellek içi önbellekten geçer (kurlar 60 sn, makro 30 dk) ve ağ hatalarında jitter'lı üstel geri çekilmeyle 3 kez yeniden denenir. Sürekli hata veren bir kaynak için **devre kesici** devreye girer ve 45 sn boyunca anında bilgilendirici hata döner — böylece engellenmiş bir kaynağa istek atmak zaman kaybı yaratmaz. Durumu `get_data_health` ile görebilirsiniz.
+**Resilience:** All source calls go through a source-specific TTL in-memory cache (FX rates 60 s, macro 30 min) and are retried 3 times with jittered exponential backoff on network errors. A **circuit breaker** kicks in for a persistently failing source and returns an immediate informative error for 45 s — so hammering a blocked source does not waste time. Check status with `get_data_health`.
 
-**Proje yapısı:**
+**Project structure:**
 ```
 src/
-  index.ts              # Sunucu kurulumu ve tüm araçların kaydı
-  tools/                # Her araç için bir dosya (registerX)
+  index.ts              # Server setup and registration of all tools
+  tools/                # One file per tool (registerX)
   utils/
-    yahoo.ts            # Yahoo Finance istemcisi (kotasyon/OHLC/arama, önbellekli)
-    cache.ts            # TTL önbellek + jitter'lı yeniden deneme
+    yahoo.ts            # Yahoo Finance client (quote/OHLC/search, cached)
+    cache.ts            # TTL cache + jittered retry
     indicators.ts       # RSI, SMA, EMA, MACD, Bollinger, ATR
-    financeMath.ts      # İstatistik ve portföy matematiği
-    fetchWithRetry.ts   # Retry'lı + önbellekli HTTP isteği + hata yanıtı
-    httpCircuit.ts      # Host bazlı devre kesici
-    resolveTickers      # THYAO → THYAO.IS sembol çözümlemesi (yahoo.ts içinde)
-    toolCatalog.ts      # finans://tools/catalog kaynağı
-    financePrompts.ts   # Hazır soru şablonları (MCP prompts)
-scripts/smoke.mjs       # Canlı smoke testi
+    financeMath.ts      # Statistics and portfolio math
+    fetchWithRetry.ts   # HTTP request with retry + cache + error response
+    httpCircuit.ts      # Host-based circuit breaker
+    resolveTickers      # THYAO → THYAO.IS symbol resolution (inside yahoo.ts)
+    toolCatalog.ts      # finans://tools/catalog resource
+    financePrompts.ts   # Ready-made prompt templates (MCP prompts)
+scripts/smoke.mjs       # Live smoke test
 ```
 
-## 📄 Lisans
+## 📄 License
 
 MIT License © 2026 [metehan05-eng](https://github.com/metehan05-eng)

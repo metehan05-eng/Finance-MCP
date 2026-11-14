@@ -38,6 +38,8 @@ const CASES = [
   { name: "get_exchange_rate", args: { from: "USD", to: "TRY" }, critical: true },
   { name: "get_crypto_price", args: { coinId: "bitcoin" }, critical: true },
   { name: "get_bist_price", args: { symbol: "XU100" }, critical: true },
+  { name: "get_global_stock_price", args: { symbol: "AAPL" }, critical: false },
+  { name: "get_fundamentals", args: { symbol: "AAPL" }, critical: false },
   { name: "get_tcmb_snapshot", args: {}, critical: false },
   { name: "get_altin_gram_price", args: {}, critical: false },
   {
@@ -69,6 +71,42 @@ const CASES = [
     critical: false,
   },
   { name: "get_watchlist", args: {}, critical: false }, // kalıcı liste okuma yolu
+  {
+    name: "analyze_portfolio",
+    args: {
+      positions: [
+        { symbol: "THYAO.IS", quantity: 10, cost: 280 },
+        { symbol: "AAPL", quantity: 2, cost: 150 },
+      ],
+      riskFreeRatePct: 30,
+      includeBreakdown: false,
+    },
+    critical: false,
+  },
+  {
+    name: "get_risk_metrics",
+    args: { symbol: "THYAO.IS", period: "1y", interval: "1d", confidence: 95 },
+    critical: false,
+  },
+  { name: "get_seasonality", args: { symbol: "AAPL", years: 3 }, critical: false },
+  { name: "get_insider_transactions", args: { symbol: "AAPL", limit: 3 }, critical: false },
+  { name: "get_institutional_holders", args: { symbol: "AAPL", limit: 3 }, critical: false },
+  { name: "get_etf_holdings", args: { symbol: "SPY", limit: 3 }, critical: false },
+  { name: "get_options_chain", args: { symbol: "AAPL", limit: 3 }, critical: false },
+  {
+    name: "get_rebalancing_plan",
+    args: {
+      positions: [
+        { symbol: "A", value: 600 },
+        { symbol: "B", value: 400 },
+      ],
+      targets: [
+        { symbol: "A", weightPct: 70 },
+        { symbol: "B", weightPct: 30 },
+      ],
+    },
+    critical: false,
+  },
 ];
 
 const selected = only ? CASES.filter((c) => only.includes(c.name)) : CASES;
@@ -186,7 +224,7 @@ proc.stdin.write(
 );
 
 // Araç sayısı index.ts kayıtlarıyla senkron olmalı; drift olursa smoke erken düşer.
-const EXPECTED_TOOL_COUNT = 44;
+const EXPECTED_TOOL_COUNT = 51;
 const toolList = await withTimeout(send("tools/list", {}), 60_000, "tools/list");
 const tools = toolList?.result?.tools;
 if (!Array.isArray(tools)) {

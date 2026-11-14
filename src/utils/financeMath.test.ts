@@ -11,6 +11,11 @@ import {
   parseTrNumber,
   round,
   alignByDate,
+  percentile,
+  skewness,
+  kurtosis,
+  downsideDeviation,
+  maxDrawdown,
 } from "./financeMath.js";
 
 const close = (actual: number | null | undefined, expected: number, tol = 1e-6, msg?: string) =>
@@ -96,6 +101,41 @@ test("round: null geçer, ondalık yuvarlar", () => {
   assert.equal(round(null), null);
   assert.equal(round(1.23456), 1.23);
   close(round(1.23456, 3)!, 1.235);
+});
+
+test("percentile: doğrusal interpolasyon ve sınırlar", () => {
+  close(percentile([1, 2, 3, 4, 5], 0.5), 3);
+  close(percentile([1, 2, 3, 4, 5], 0.05), 1.2);
+  close(percentile([5, 1, 4, 2, 3], 0), 1);
+  close(percentile([5, 1, 4, 2, 3], 1), 5);
+  assert.equal(percentile([], 0.5), 0);
+  close(percentile([7], 0.9), 7);
+});
+
+test("skewness / kurtosis: simetrik seride sıfıra yakın", () => {
+  close(skewness([-2, -1, 0, 1, 2]), 0);
+  close(skewness([1, 1, 1]), 0);
+  close(kurtosis([1, 1, 1, 1, 1]), 0);
+  assert.ok(skewness([0, 0, 0, 0, 10]) > 1, "sağa çarpık seri pozitif çarpıklık");
+  assert.ok(kurtosis([0, 0, 0, 0, 0, 0, 10]) > 1, "aykırı değer fazla basıklık");
+});
+
+test("downsideDeviation: yalnızca hedefin altındaki getiriler", () => {
+  close(downsideDeviation([0.02, -0.01, 0.03], 0), Math.sqrt(0.0001 / 3));
+  assert.equal(downsideDeviation([0.01, 0.02], 0), 0);
+  close(downsideDeviation([], 0), 0);
+});
+
+test("maxDrawdown: zirve, dip ve toparlanma indekslerini bulur", () => {
+  const dd = maxDrawdown([100, 120, 90, 110, 130]);
+  close(dd.maxDrawdown, -0.25);
+  assert.deepEqual(dd, { maxDrawdown: -0.25, peakIndex: 1, troughIndex: 2, recoveryIndex: 4 });
+
+  const never = maxDrawdown([100, 110, 120]);
+  assert.deepEqual(never, { maxDrawdown: 0, peakIndex: 0, troughIndex: 0, recoveryIndex: null });
+
+  const empty = maxDrawdown([]);
+  assert.deepEqual(empty, { maxDrawdown: 0, peakIndex: -1, troughIndex: -1, recoveryIndex: null });
 });
 
 test("alignByDate: ortak tarihleri eşleştirir", () => {

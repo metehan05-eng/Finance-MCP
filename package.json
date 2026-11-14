@@ -1,7 +1,7 @@
 {
   "name": "finans-mcp",
-  "version": "1.6.1",
-  "description": "Türkiye ve global finans verilerine erişim sağlayan açık kaynak MCP server (döviz, kripto, hisse geçmişi, teknik analiz, temettü, bilanço takvimi, analist konsensüsü, makroekonomi, portföy analizi, BIST, haber)",
+  "version": "1.7.0",
+  "description": "Türkiye ve global finans verilerine erişim sağlayan açık kaynak MCP server (döviz, kripto, hisse geçmişi, teknik analiz, risk metrikleri, mevsimsellik, insider/kurumsal sahiplik, ETF ve opsiyon verisi, temettü, bilanço takvimi, analist konsensüsü, makroekonomi, portföy analizi, BIST, haber)",
   "type": "module",
   "main": "build/index.js",
   "bin": {

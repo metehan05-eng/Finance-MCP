@@ -234,6 +234,47 @@ export const TOOL_CATALOG: CatalogEntry[] = [
     examples: ["Türk Hava Yolları sembolü ne?", "Apple sembolü?"],
   },
   {
+    name: "get_risk_metrics",
+    description:
+      "Risk metrikleri: tarihsel VaR/CVaR, maksimum düşüş ve toparlanma, Sharpe, Sortino, Calmar, volatilite, çarpıklık/basıklık.",
+    examples: ["THYAO riski ne kadar?", "AAPL'in maksimum düşüşü ve VaR'ı kaç?"],
+  },
+  {
+    name: "get_seasonality",
+    description:
+      "Takvim ayı bazlı mevsimsel performans: ortalama getiri, pozitif oran, en iyi/kötü yıl.",
+    examples: ["AAPL hangi aylarda güçlü?", "XU100 için mevsimsellik var mı?"],
+  },
+  {
+    name: "get_insider_transactions",
+    description:
+      "Şirket içi kişilerin son alım-satımları, net insider alım eğilimi ve insider sahiplik oranı.",
+    examples: ["AAPL yöneticileri son dönemde alım mı satım mı yaptı?"],
+  },
+  {
+    name: "get_institutional_holders",
+    description: "Kurumsal/fon sahiplik dağılımı, en büyük kurumlar ve pozisyon değişimleri.",
+    examples: ["AAPL'de en büyük kurumsal yatırımcılar kimler?"],
+  },
+  {
+    name: "get_etf_holdings",
+    description:
+      "ETF/fon içeriği: en büyük holdingler, sektör dağılımı, gider oranı ve dönemsel getiriler.",
+    examples: ["SPY içinde neler var?", "QQQ sektör dağılımı ve gider oranı?"],
+  },
+  {
+    name: "get_options_chain",
+    description:
+      "Opsiyon zinciri özeti: vadeler, ATM call/put, açık pozisyon, hacim ve put/call oranı.",
+    examples: ["AAPL en yakın vadeli opsiyon zinciri nasıl?", "NVDA put/call oranı kaç?"],
+  },
+  {
+    name: "get_rebalancing_plan",
+    description:
+      "Hedef ağırlıklara göre yeniden dengeleme planı: her varlık için al/sat tutarı ve uyarılar.",
+    examples: ["Portföyümü %60 THYAO / %40 AAPL yapmak için ne alıp satmalıyım?"],
+  },
+  {
     name: "get_data_health",
     description: "Tüm veri kaynaklarının erişilebilirliği ve yanıt süreleri (teşhis aracı).",
     examples: ["Hangi veri kaynağı çalışmıyor?"],

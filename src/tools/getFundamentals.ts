@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
-import { getYahoo } from "../utils/yahoo.js";
+import { fetchQuoteSummary } from "../utils/yahoo.js";
 import { round } from "../utils/financeMath.js";
 
 /**
@@ -39,15 +39,8 @@ export function registerGetFundamentals(server: McpServer) {
       const ticker = symbol.trim().toUpperCase();
 
       try {
-        const yf = await getYahoo();
-
-        // Yahoo v4 bazen geçici ağ hatası verir; bir kez daha dene
-        let result: any;
-        try {
-          result = await yf.quoteSummary(ticker, { modules: SUMMARY_MODULES });
-        } catch {
-          result = await yf.quoteSummary(ticker, { modules: SUMMARY_MODULES });
-        }
+        // Ortak önbellek + yeniden deneme sarmalayıcısı (Yahoo geçici hatalarına dayanıklı).
+        const result: any = await fetchQuoteSummary(ticker, SUMMARY_MODULES);
 
         const k = result?.defaultKeyStatistics ?? {};
         const fd = result?.financialData ?? {};

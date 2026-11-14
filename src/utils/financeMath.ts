@@ -112,6 +112,106 @@ export function round(n: number | null | undefined, digits = 2): number | null {
 }
 
 /**
+ * Sıralanmış kopya üzerinde p (0-1) yüzdeliğini doğrusal interpolasyonla döndürür.
+ * Boş seride 0 döner.
+ */
+export function percentile(xs: number[], p: number): number {
+  if (xs.length === 0) return 0;
+  const sorted = [...xs].sort((a, b) => a - b);
+  if (sorted.length === 1) return sorted[0];
+  const clamped = Math.min(1, Math.max(0, p));
+  const idx = clamped * (sorted.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+/** Getirilerin çarpıklığı (population skewness). 3'ten az gözlemde 0. */
+export function skewness(xs: number[]): number {
+  const n = xs.length;
+  if (n < 3) return 0;
+  const m = mean(xs);
+  const m2 = xs.reduce((s, x) => s + (x - m) ** 2, 0) / n;
+  const m3 = xs.reduce((s, x) => s + (x - m) ** 3, 0) / n;
+  if (m2 === 0) return 0;
+  return m3 / Math.pow(m2, 1.5);
+}
+
+/** Getirilerin fazla basıklığı (excess kurtosis). 4'ten az gözlemde 0. */
+export function kurtosis(xs: number[]): number {
+  const n = xs.length;
+  if (n < 4) return 0;
+  const m = mean(xs);
+  const m2 = xs.reduce((s, x) => s + (x - m) ** 2, 0) / n;
+  const m4 = xs.reduce((s, x) => s + (x - m) ** 4, 0) / n;
+  if (m2 === 0) return 0;
+  return m4 / (m2 * m2) - 3;
+}
+
+/**
+ * Aşağı yönlü sapma (downside deviation): hedefin altındaki getirilerin
+ * karelerinin ortalamasının karekökü. Sortino oranında kullanılır.
+ */
+export function downsideDeviation(xs: number[], target = 0): number {
+  if (xs.length === 0) return 0;
+  const sq = xs.reduce((s, x) => s + (x < target ? (x - target) ** 2 : 0), 0);
+  return Math.sqrt(sq / xs.length);
+}
+
+export interface DrawdownInfo {
+  /** Maksimum düşüş (negatif kesir, örn. -0.25 = %25 düşüş). */
+  maxDrawdown: number;
+  /** Zirvenin serideki indeksi (-1 = seri boş). */
+  peakIndex: number;
+  /** Dip noktasının indeksi. */
+  troughIndex: number;
+  /** Zirve seviyesine ilk geri dönüş indeksi (yoksa null). */
+  recoveryIndex: number | null;
+}
+
+/**
+ * Bir değer serisindeki (fiyat/portföy değeri) en büyük tepe-dip düşüşünü bulur.
+ */
+export function maxDrawdown(values: number[]): DrawdownInfo {
+  if (values.length === 0) {
+    return { maxDrawdown: 0, peakIndex: -1, troughIndex: -1, recoveryIndex: null };
+  }
+
+  let peak = values[0];
+  let peakIdx = 0;
+  let maxDd = 0;
+  let bestPeak = 0;
+  let bestTrough = 0;
+
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] > peak) {
+      peak = values[i];
+      peakIdx = i;
+    }
+    const dd = peak === 0 ? 0 : values[i] / peak - 1;
+    if (dd < maxDd) {
+      maxDd = dd;
+      bestPeak = peakIdx;
+      bestTrough = i;
+    }
+  }
+
+  let recoveryIndex: number | null = null;
+  if (maxDd < 0) {
+    const peakValue = values[bestPeak];
+    for (let i = bestTrough + 1; i < values.length; i++) {
+      if (values[i] >= peakValue) {
+        recoveryIndex = i;
+        break;
+      }
+    }
+  }
+
+  return { maxDrawdown: maxDd, peakIndex: bestPeak, troughIndex: bestTrough, recoveryIndex };
+}
+
+/**
  * İki fiyat serisini tarih (YYYY-MM-DD) üzerinden hizalar, kapanışları döndürür.
  */
 export function alignByDate(

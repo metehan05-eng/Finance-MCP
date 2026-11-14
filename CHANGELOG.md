@@ -3,6 +3,33 @@
 Tüm notable değişiklikler bu dosyada belgelenir.
 Format: [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) — sürümleme: [SemVer](https://semver.org/lang/tr/).
 
+## [1.7.0] — 2026-11-14
+
+### Eklenenler
+- `get_risk_metrics`: Tarihsel VaR/CVaR, maksimum düşüş ve zirveye dönüş tarihleri, Sharpe, Sortino, Calmar, yıllık volatilite, çarpıklık ve fazla basıklık.
+- `get_seasonality`: Takvim ayı bazlı ortalama/medyan getiri, pozitif kapanma oranı, en iyi/en kötü yıl; veri boşluklarını atlayarak yanlış ay atfını önler.
+- `get_insider_transactions`: Insider alım-satımları, net insider alım eğilimi, insider sahiplik oranı ve en büyük insider pozisyonları.
+- `get_institutional_holders`: Kurumsal ve fon sahipliği, en büyük kurumlar, pozisyon değişimi ve sahiplik özeti.
+- `get_etf_holdings`: ETF/fon en büyük holdingleri, sektör dağılımı, gider oranı ve dönemsel getiriler.
+- `get_options_chain`: Opsiyon zinciri özeti — vadeler, ATM call/put, toplam açık pozisyon/hacim, put/call oranı ve en likit kontratlar.
+- `get_rebalancing_plan`: Mevcut değerler + hedef ağırlıklardan al/sat planı; ağırlıkları normalize eder, yeni pozisyon/çıkış/nakit uyarıları verir.
+
+### Geliştirilen
+- `financeMath`: `percentile`, `skewness`, `kurtosis`, `downsideDeviation`, `maxDrawdown` yardımcıları eklendi ve test edildi.
+- `yahoo`: Önbellek + yeniden denemeli `fetchOptions` sarmalayıcısı eklendi.
+- `toolCatalog`: 51 araca senkronize edildi; katalog testindeki sabit sayım güncellendi.
+- README araç tablosu ve sürüm bilgisi 1.7.0'a güncellendi.
+- `smoke`: Beklenen araç sayısı 51'e çekildi; yeni araçlar ve `get_global_stock_price`/`get_fundamentals` için canlı vakalar eklendi.
+- `analyze_portfolio`: Risk metrikleri artık sabit varsayımlar yerine son 1 yılın günlük USD getirilerinden hesaplanıyor (yıllık volatilite/getiri, Sharpe, maksimum düşüş; TRY varlıklar USD'ye çevrilir). Test kapsamı 243 → 246.
+
+### Düzeltmeler
+- `get_bist_price`, `get_global_stock_price`, `get_fundamentals`: Her çağrıda yeni `YahooFinance` örneği oluşturmak yerine ortak singleton, önbellek ve yeniden deneme sarmalayıcıları kullanılıyor (rate-limit dostu).
+- `release.yml`: `NPM_TOKEN` iş düzeyine taşındı; adım koşulundaki `env.NPM_TOKEN` kontrolü artık gerçekten çalışıyor (önceden yayın adımı sessizce atlanabiliyordu).
+- `SECURITY.md`: Desteklenen sürüm tablosu 1.7.0'a güncellendi.
+
+### Değişti
+- Sürüm: 1.7.0
+
 ## [1.6.1] — 2026-10-14
 
 ### Düzeltmeler

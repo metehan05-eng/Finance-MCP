@@ -6,8 +6,8 @@ Güvenlik düzeltmesi yalnızca en son yayınlanan sürüm için sunulur.
 
 | Sürüm | Desteklenir |
 | ----- | ----------- |
-| >= 1.6.1 | Evet |
-| < 1.6.1 | Hayır |
+| >= 1.7.0 | Evet |
+| < 1.7.0 | Hayır |
 
 ## Güvenlik Açığı Bildirimi
 
