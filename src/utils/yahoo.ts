@@ -2,12 +2,28 @@
 // Tüm Yahoo tabanlı araçlar aynı örneği paylaşır (rate-limit dostu).
 // Ayrıca kısa TTL'li önbellek + yeniden deneme uygulanır.
 
-import { cached as cacheFetch, withRetry } from "./cache.js";
+import { cachedWithInfo, withRetry } from "./cache.js";
+import { recordDataSource } from "./responseMetadata.js";
 
 /** Fiyat/kotasyon önbellek TTL'si (saniye). */
 const QUOTE_TTL = 60;
 /** Geçmiş veri (eski mumlar değişmez) için uzun TTL. */
 const HISTORY_TTL = 900;
+
+export async function cachedYahooQuery<T>(
+  key: string,
+  fn: () => Promise<T>,
+  ttlSeconds = QUOTE_TTL
+): Promise<T> {
+  const result = await cachedWithInfo(key, ttlSeconds, fn);
+  recordDataSource({
+    source: "Yahoo Finance",
+    cacheStatus: result.cacheStatus,
+    fetchedAt: result.fetchedAt,
+    ageSeconds: result.ageSeconds,
+  });
+  return result.value;
+}
 
 let cached: any | null = null;
 
@@ -66,9 +82,8 @@ export async function fetchOhlc(
 ): Promise<ChartResult> {
   const key = `ohlc:${symbol}:${opts.period ?? "1y"}:${opts.interval ?? "1d"}:${opts.startDate ?? ""}:${opts.endDate ?? ""}:${opts.events ?? ""}`;
 
-  return cacheFetch(
+  return cachedYahooQuery(
     key,
-    opts.startDate || opts.period === "max" ? HISTORY_TTL : QUOTE_TTL,
     async () => {
       const yf = await getYahoo();
 
@@ -161,7 +176,8 @@ export async function fetchOhlc(
         rows,
         events: result?.events ?? null,
       } as ChartResult;
-    }
+    },
+    opts.startDate || opts.period === "max" ? HISTORY_TTL : QUOTE_TTL
   );
 }
 export const PERIOD_DAYS: Record<string, number> = {
@@ -183,7 +199,7 @@ export async function fetchQuotes(symbols: string[]): Promise<any[]> {
   if (symbols.length === 0) return [];
   const yf = await getYahoo();
   const key = `quotes:${[...symbols].sort().join(",")}`;
-  return cacheFetch(key, QUOTE_TTL, async () => {
+  return cachedYahooQuery(key, async () => {
     const result: any = await withRetry(() => yf.quote(symbols), {
       attempts: 3,
       label: `quote ${symbols.length} sembol`,
@@ -198,7 +214,7 @@ export async function fetchQuotes(symbols: string[]): Promise<any[]> {
 export async function fetchQuote(symbol: string): Promise<any> {
   const yf = await getYahoo();
   const key = `quote:${symbol}`;
-  return cacheFetch(key, QUOTE_TTL, async () => {
+  return cachedYahooQuery(key, async () => {
     const result: any = await withRetry(() => yf.quote(symbol), {
       attempts: 3,
       label: `quote ${symbol}`,
@@ -284,7 +300,7 @@ export async function resolveTickers(symbols: string[]): Promise<Map<string, str
 export async function searchSymbols(query: string, quotesCount = 8) {
   const yf = await getYahoo();
   const key = `search:${query}:${quotesCount}`;
-  return cacheFetch(key, QUOTE_TTL, async () => {
+  return cachedYahooQuery(key, async () => {
     const result: any = await withRetry(() => yf.search(query, { quotesCount, newsCount: 0 }), {
       attempts: 2,
       label: `search ${query}`,
@@ -303,7 +319,7 @@ export async function fetchQuoteSummary(
 ): Promise<Record<string, any>> {
   const yf = await getYahoo();
   const key = `qs:${symbol}:${[...modules].sort().join(",")}`;
-  return cacheFetch(key, QUOTE_TTL, async () => {
+  return cachedYahooQuery(key, async () => {
     const result: any = await withRetry(() => yf.quoteSummary(symbol, { modules }), {
       attempts: 3,
       label: `quoteSummary ${symbol}`,
@@ -319,7 +335,7 @@ export async function fetchQuoteSummary(
 export async function fetchOptions(symbol: string, date?: string): Promise<any> {
   const yf = await getYahoo();
   const key = `options:${symbol}:${date ?? ""}`;
-  return cacheFetch(key, QUOTE_TTL, async () => {
+  return cachedYahooQuery(key, async () => {
     return withRetry(() => yf.options(symbol, date ? { date } : {}), {
       attempts: 2,
       label: `options ${symbol}`,

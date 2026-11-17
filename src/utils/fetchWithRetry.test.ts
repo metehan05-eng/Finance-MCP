@@ -274,6 +274,36 @@ test("önbellekten dönen yanıtın durum kodu ve içerik tipi korunur", async (
   assert.equal(calls.length, 1);
 });
 
+test("kaynak yenilenemezse son başarılı yanıt stale etiketiyle döner", async () => {
+  breakerReset();
+  cacheClear();
+  let calls = 0;
+  const impl = (async () => {
+    calls++;
+    if (calls === 1) {
+      return new Response('{"price":42}', {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    throw new Error("socket closed");
+  }) as unknown as typeof fetch;
+
+  const first = await withFetch(impl, () =>
+    fetchWithRetry("https://stale-test.example.com/quote", {}, 1, 0)
+  );
+  const second = await withFetch(impl, () =>
+    fetchWithRetry("https://stale-test.example.com/quote", {}, 1, 0)
+  );
+
+  assert.equal(await first.text(), '{"price":42}');
+  assert.equal(await second.text(), '{"price":42}');
+  assert.equal(second.headers.get("x-finans-cache"), "stale");
+  assert.equal(second.headers.get("x-finans-age-seconds") !== null, true);
+  assert.equal(calls, 2, "yenileme başarısız olduğunda eski veri kullanılır");
+  cacheClear();
+});
+
 test("Retry-After saniye değeri ve üst sınır doğru çevrilir", () => {
   assert.equal(retryDelayMs("2", 1), 2000);
   assert.equal(retryDelayMs("0", 3), 0);

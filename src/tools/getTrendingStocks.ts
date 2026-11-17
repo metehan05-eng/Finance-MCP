@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
-import { getYahoo, fetchQuotes } from "../utils/yahoo.js";
+import { getYahoo, fetchQuotes, cachedYahooQuery } from "../utils/yahoo.js";
 import { round } from "../utils/financeMath.js";
 
 /**
@@ -22,32 +22,33 @@ export function registerGetTrendingStocks(server: McpServer) {
     { readOnlyHint: true, openWorldHint: true },
     async ({ region, count }) => {
       try {
-        const yf = await getYahoo();
         const reg = region.toUpperCase();
-
-        let symbols: string[] = [];
-        let source = "Yahoo Finance Trending";
-        let fallback = false;
-
-        try {
-          const trending = await yf.trendingSymbols(reg, { count });
-          symbols = (trending?.quotes ?? [])
-            .map((q: any) => q?.symbol)
-            .filter((s: unknown): s is string => typeof s === "string");
-        } catch {
-          /* trending uç noktası bu bölgede desteklenmiyor olabilir */
-        }
-
-        if (symbols.length === 0) {
-          const screener = await yf.screener({ scrIds: "most_actives", count, region: reg });
-          symbols = (screener?.quotes ?? [])
-            .map((q: any) => q?.symbol)
-            .filter((s: unknown): s is string => typeof s === "string");
-          source = "Yahoo Finance Screener (most_actives) — trending yedeği";
-          fallback = true;
-        }
-
-        symbols = symbols.slice(0, count);
+        const { symbols, source, fallback } = await cachedYahooQuery(
+          `trending:${reg}:${count}`,
+          async () => {
+            const yf = await getYahoo();
+            let found: string[] = [];
+            let resultSource = "Yahoo Finance Trending";
+            let usedFallback = false;
+            try {
+              const trending = await yf.trendingSymbols(reg, { count });
+              found = (trending?.quotes ?? [])
+                .map((q: any) => q?.symbol)
+                .filter((s: unknown): s is string => typeof s === "string");
+            } catch {
+              /* Bu bölge Yahoo trending tarafından desteklenmiyor olabilir. */
+            }
+            if (found.length === 0) {
+              const screener = await yf.screener({ scrIds: "most_actives", count, region: reg });
+              found = (screener?.quotes ?? [])
+                .map((q: any) => q?.symbol)
+                .filter((s: unknown): s is string => typeof s === "string");
+              resultSource = "Yahoo Finance Screener (most_actives) — trending yedeği";
+              usedFallback = true;
+            }
+            return { symbols: found.slice(0, count), source: resultSource, fallback: usedFallback };
+          }
+        );
         if (symbols.length === 0) {
           return errorResponse(`'${reg}' bölgesi için trend sembol bulunamadı.`);
         }

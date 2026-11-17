@@ -125,6 +125,10 @@ An open-source **Model Context Protocol (MCP)** server providing direct access t
 >
 > 🧩 **Ready-made prompt templates** (`prompts/list`): `market_morning_brief`, `stock_deep_dive`, `portfolio_review`, `data_source_diagnosis`.
 
+### Data freshness and outages
+
+JSON tool responses include a `_dataMetadata` object with source names, the last successful fetch time, cache status, data age, and response generation time. When a source refresh fails, the server may return its last successful cached response for up to 24 hours; those results are marked with `staleData: true` and a `stale` source status. `get_data_health` also checks that providers return recognizable payloads, not only successful HTTP status codes.
+
 ---
 
 ## 📦 Installation

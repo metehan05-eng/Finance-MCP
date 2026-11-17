@@ -3,6 +3,14 @@
 Tüm notable değişiklikler bu dosyada belgelenir.
 Format: [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) — sürümleme: [SemVer](https://semver.org/lang/tr/).
 
+## [Unreleased]
+
+### Eklenenler
+- Tüm JSON araç yanıtlarına kaynak, son başarılı veri zamanı, önbellek durumu ve yanıt üretim zamanı ekleyen ortak `_dataMetadata` alanı.
+- TTL süresi dolan son başarılı HTTP/Yahoo yanıtı, kaynak yenilemesi başarısız olduğunda 24 saate kadar `stale` olarak kullanılabilir; stale kullanımı metadata içinde görünür.
+- `get_data_health` kontrolleri HTTP 200'ün yanında kaynak yanıtının biçimini ve beklenen temel alanlarını doğrular; timeout sonuçlandıktan sonra zamanlayıcı temizlenir.
+- Yahoo trend ve screener çağrıları da TTL önbelleği, stale fallback ve provenance takibine alındı.
+
 ## [1.7.0] — 2026-11-14
 
 ### Eklenenler

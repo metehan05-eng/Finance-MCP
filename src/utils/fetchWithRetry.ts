@@ -1,5 +1,6 @@
-import { cached, cacheDelete } from "./cache.js";
+import { cachedWithInfo, cacheDelete, type CacheResult } from "./cache.js";
 import { assertBreakerClosed, recordFailure, recordSuccess } from "./httpCircuit.js";
+import { recordDataSource } from "./responseMetadata.js";
 
 /**
  * Exponential backoff ile HTTP isteği atar.
@@ -17,6 +18,7 @@ import { assertBreakerClosed, recordFailure, recordSuccess } from "./httpCircuit
 const HOST_TTL: Record<string, number> = {
   "api.coingecko.com": 60,
   "api.frankfurter.app": 300,
+  "api.frankfurter.dev": 300,
   "api.worldbank.org": 3600,
   "www.tcmb.gov.tr": 1800,
   "www.tefas.gov.tr": 300,
@@ -34,6 +36,12 @@ interface CachedBody {
   statusText: string;
   body: string;
   contentType: string;
+}
+
+class UpstreamStatusError extends Error {
+  constructor(readonly response: CachedBody) {
+    super(`Kaynak geçici olarak kullanılamıyor (HTTP ${response.status})`);
+  }
 }
 
 export function resolveTtl(url: string): number {
@@ -61,23 +69,63 @@ export async function fetchWithRetry(
   ttlSeconds = resolveTtl(url)
 ): Promise<Response> {
   const method = (options.method ?? "GET").toUpperCase();
-  if (method !== "GET" || options.body) {
+  let tefasReadPost = false;
+  try {
+    tefasReadPost =
+      method === "POST" &&
+      new URL(url).hostname === "www.tefas.gov.tr" &&
+      typeof options.body === "string";
+  } catch {
+    // fetchRaw produces the network layer's regular invalid-URL error.
+  }
+  if ((method !== "GET" && !tefasReadPost) || (method === "GET" && options.body)) {
     return fetchRaw(url, options, maxRetries);
   }
 
-  const cacheKey = `http:${url}`;
+  const cacheKey = `http:${method}:${url}:${tefasReadPost ? options.body : ""}`;
 
   // Aynı URL için eşzamanlı istekleri tekilleştirir, TTL boyunca önbellekten döner.
   // Gövde metin olarak saklanır ve her çağrıda YENİ bir Response üretilir:
   // aksi halde ikinci çağıran "Body has already been read" hatası alırdı.
-  const hit = await cached(cacheKey, ttlSeconds, async (): Promise<CachedBody> => {
-    const response = await fetchRaw(url, options, maxRetries);
-    return {
-      status: response.status,
-      statusText: response.statusText,
-      body: await response.text(),
-      contentType: response.headers.get("content-type") ?? "text/plain; charset=utf-8",
-    };
+  let cachedResult: CacheResult<CachedBody>;
+  try {
+    cachedResult = await cachedWithInfo(cacheKey, ttlSeconds, async (): Promise<CachedBody> => {
+      const response = await fetchRaw(url, options, maxRetries);
+      const body = await response.text();
+      const payload = {
+        status: response.status,
+        statusText: response.statusText,
+        body,
+        contentType: response.headers.get("content-type") ?? "text/plain; charset=utf-8",
+      };
+      if (response.status === 429 || response.status >= 500) {
+        throw new UpstreamStatusError(payload);
+      }
+      return payload;
+    });
+  } catch (err) {
+    if (!(err instanceof UpstreamStatusError)) throw err;
+    const host = new URL(url).hostname;
+    recordDataSource({
+      source: sourceName(host),
+      cacheStatus: "miss",
+      fetchedAt: new Date().toISOString(),
+      ageSeconds: 0,
+    });
+    return new Response(err.response.body, {
+      status: err.response.status,
+      statusText: err.response.statusText,
+      headers: { "content-type": err.response.contentType, "x-finans-cache": "miss" },
+    });
+  }
+
+  const hit = cachedResult.value;
+  const host = new URL(url).hostname;
+  recordDataSource({
+    source: sourceName(host),
+    cacheStatus: cachedResult.cacheStatus,
+    fetchedAt: cachedResult.fetchedAt,
+    ageSeconds: cachedResult.ageSeconds,
   });
 
   // Hata yanıtları (4xx/5xx/rate limit) kalıcı olmamalı: kaynak toparlanınca
@@ -87,8 +135,30 @@ export async function fetchWithRetry(
   return new Response(hit.body, {
     status: hit.status,
     statusText: hit.statusText,
-    headers: { "content-type": hit.contentType },
+    headers: {
+      "content-type": hit.contentType,
+      "x-finans-cache": cachedResult.cacheStatus,
+      "x-finans-fetched-at": cachedResult.fetchedAt,
+      "x-finans-age-seconds": String(cachedResult.ageSeconds),
+    },
   });
+}
+
+function sourceName(host: string): string {
+  const known: Record<string, string> = {
+    "api.coingecko.com": "CoinGecko",
+    "api.frankfurter.app": "Frankfurter / ECB",
+    "api.frankfurter.dev": "Frankfurter / ECB",
+    "api.worldbank.org": "World Bank",
+    "www.tcmb.gov.tr": "TCMB",
+    "www.tefas.gov.tr": "TEFAS",
+    "doviz.com": "doviz.com",
+    "api.alternative.me": "alternative.me",
+    "nfs.faireconomy.media": "ForexFactory",
+    "feeds.finance.yahoo.com": "Yahoo Finance RSS",
+    "www.oyakyatirim.com.tr": "OYAK Yatırım",
+  };
+  return known[host] ?? host;
 }
 
 async function fetchRaw(url: string, options: RequestInit, maxRetries: number): Promise<Response> {

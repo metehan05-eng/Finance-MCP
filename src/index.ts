@@ -79,12 +79,14 @@ import { registerGetOptionsChain } from "./tools/getOptionsChain.js";
 import { registerGetRebalancingPlan } from "./tools/getRebalancingPlan.js";
 import { registerFinancePrompts } from "./utils/financePrompts.js";
 import { loadWatchlist, watchlistPath } from "./utils/watchlistStore.js";
+import { installResponseMetadata } from "./utils/responseMetadata.js";
 
 async function main() {
   const server = new McpServer({
     name: "finans-mcp",
     version: "1.7.0",
   });
+  installResponseMetadata(server);
 
   // Döviz & para birimi (Frankfurter / ECB)
   registerGetExchangeRate(server); // Güncel veya geçmiş kur

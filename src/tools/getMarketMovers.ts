@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { errorResponse } from "../utils/fetchWithRetry.js";
-import { getYahoo } from "../utils/yahoo.js";
+import { getYahoo, cachedYahooQuery } from "../utils/yahoo.js";
 import { round } from "../utils/financeMath.js";
 
 const SCREENS = [
@@ -44,22 +44,27 @@ export function registerGetMarketMovers(server: McpServer) {
     { readOnlyHint: true, openWorldHint: true },
     async ({ screen, region, count }) => {
       try {
-        const yf = await getYahoo();
         const region_ = region.toUpperCase();
 
         // Yahoo tarayıcı uç noktası ara sıra "fetch failed" verir; 2 deneme
-        let result: any = null;
-        let lastError: unknown = null;
-        for (let attempt = 0; attempt < 2 && result === null; attempt++) {
-          try {
-            result = await yf.screener({ scrIds: screen, count, region: region_ });
-          } catch (err) {
-            lastError = err;
+        const result: any = await cachedYahooQuery(
+          `screener:${screen}:${region_}:${count}`,
+          async () => {
+            const yf = await getYahoo();
+            let found: any = null;
+            let lastError: unknown = null;
+            for (let attempt = 0; attempt < 2 && found === null; attempt++) {
+              try {
+                found = await yf.screener({ scrIds: screen, count, region: region_ });
+              } catch (err) {
+                lastError = err;
+              }
+            }
+            if (found === null)
+              throw lastError instanceof Error ? lastError : new Error(String(lastError));
+            return found;
           }
-        }
-        if (result === null) {
-          throw lastError instanceof Error ? lastError : new Error(String(lastError));
-        }
+        );
 
         const quotes: any[] = result?.quotes ?? [];
         if (quotes.length === 0) {

@@ -9,6 +9,13 @@ interface Entry<T> {
   createdAt: number;
 }
 
+export interface CacheResult<T> {
+  value: T;
+  cacheStatus: "miss" | "hit" | "shared" | "stale";
+  fetchedAt: string;
+  ageSeconds: number;
+}
+
 const store = new Map<string, Entry<unknown>>();
 const inflight = new Map<string, Promise<unknown>>();
 
@@ -18,10 +25,11 @@ let evictions = 0;
 
 /** Maksimum önbellek girdi sayısı (en eski yazılanlar silinir). */
 const MAX_ENTRIES = 500;
+const STALE_RETENTION_SECONDS = 24 * 60 * 60;
 
 function prune(now: number): void {
   for (const [k, e] of store) {
-    if (e.expiresAt <= now) store.delete(k);
+    if (e.expiresAt + STALE_RETENTION_SECONDS * 1000 <= now) store.delete(k);
   }
   if (store.size > MAX_ENTRIES) {
     const excess = store.size - MAX_ENTRIES;
@@ -45,7 +53,6 @@ function lookup<T>(key: string): { found: boolean; value: T | null } {
     return { found: false, value: null };
   }
   if (e.expiresAt <= Date.now()) {
-    store.delete(key);
     misses++;
     return { found: false, value: null };
   }
@@ -78,6 +85,7 @@ export function cacheClear(): void {
 
 export function cacheStats() {
   const now = Date.now();
+  prune(now);
   let fresh = 0;
   let stale = 0;
   for (const e of store.values()) {
@@ -109,6 +117,81 @@ export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promi
 
   inflight.set(key, promise);
   return promise;
+}
+
+/** TTL dolduktan sonra son başarılı kopyayı 24 saat tutar; yalnızca yenileme
+ * başarısız olursa açıkça "stale" olarak döndürür. */
+export async function cachedWithInfo<T>(
+  key: string,
+  ttlSeconds: number,
+  fn: () => Promise<T>
+): Promise<CacheResult<T>> {
+  const now = Date.now();
+  let entry = store.get(key) as Entry<T> | undefined;
+  if (entry && entry.expiresAt + STALE_RETENTION_SECONDS * 1000 <= now) {
+    store.delete(key);
+    entry = undefined;
+  }
+  if (entry && entry.expiresAt > now) {
+    hits++;
+    return result(entry, "hit", now);
+  }
+  misses++;
+
+  const running = inflight.get(key) as Promise<T> | undefined;
+  if (running) {
+    try {
+      const value = await running;
+      const current = store.get(key) as Entry<T> | undefined;
+      return current
+        ? result(current, "shared", Date.now())
+        : {
+            value,
+            cacheStatus: "shared",
+            fetchedAt: new Date().toISOString(),
+            ageSeconds: 0,
+          };
+    } catch (err) {
+      return staleOrThrow(entry, err);
+    }
+  }
+
+  const promise = fn()
+    .then((value) => {
+      cacheSet(key, value, ttlSeconds);
+      return value;
+    })
+    .finally(() => inflight.delete(key));
+  inflight.set(key, promise);
+
+  try {
+    const value = await promise;
+    const current = store.get(key) as Entry<T>;
+    return result(current, "miss", Date.now(), value);
+  } catch (err) {
+    return staleOrThrow(entry, err);
+  }
+}
+
+function result<T>(
+  entry: Entry<T>,
+  cacheStatus: CacheResult<T>["cacheStatus"],
+  now: number,
+  value = entry.value
+): CacheResult<T> {
+  return {
+    value,
+    cacheStatus,
+    fetchedAt: new Date(entry.createdAt).toISOString(),
+    ageSeconds: Math.max(0, Math.floor((now - entry.createdAt) / 1000)),
+  };
+}
+
+function staleOrThrow<T>(entry: Entry<T> | undefined, err: unknown): CacheResult<T> {
+  if (entry && entry.expiresAt + STALE_RETENTION_SECONDS * 1000 > Date.now()) {
+    return result(entry, "stale", Date.now());
+  }
+  throw err;
 }
 
 /** Yeniden denenebilir ağ hataları. */
